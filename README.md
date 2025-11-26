@@ -91,7 +91,16 @@ flutter run
 
 ## 📱 Screenshots
 
-*Add your app screenshots here*
+<p align="center">
+  <img src="screenshots/welcome.jpg" width="250" alt="Welcome Screen"/>
+  <img src="screenshots/home.jpg" width="250" alt="Home Screen"/>
+  <img src="screenshots/analytics.jpg" width="250" alt="Analytics"/>
+</p>
+
+<p align="center">
+  <img src="screenshots/edit.jpg" width="250" alt="Edit Transaction"/>
+  <img src="screenshots/settings.jpg" width="250" alt="Settings"/>
+</p>
 
 ## 🎨 Features Highlights
 
