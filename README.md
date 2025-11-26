@@ -110,10 +110,6 @@ flutter run
 - **Responsive Design** - Optimized for different screen sizes
 - **Smooth Animations** - Delightful micro-interactions throughout the app
 
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome! Feel free to check the issues page.
@@ -121,8 +117,8 @@ Contributions, issues, and feature requests are welcome! Feel free to check the 
 ## 👨‍💻 Author
 
 **Bhanu Pratap Singh**
-- GitHub: [@Bhanu7773-Dev](https://github.com/Bhanu7773-dev))
-- Telegram: [@darkdevil7773](https://t.me/darkdevil7773))
+- GitHub: [@Bhanu7773-Dev](https://github.com/Bhanu7773-dev)
+- Telegram: [@darkdevil7773](https://t.me/darkdevil7773)
 
 ## 🌟 Show your support
 
