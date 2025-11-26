@@ -120,8 +120,9 @@ Contributions, issues, and feature requests are welcome! Feel free to check the 
 
 ## 👨‍💻 Author
 
-**Your Name**
+**Bhanu Pratap Singh**
 - GitHub: [@Bhanu7773-Dev](https://github.com/Bhanu7773-dev))
+- Telegram: [@darkdevil7773](https://t.me/darkdevil7773))
 
 ## 🌟 Show your support
 
