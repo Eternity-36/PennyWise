@@ -33,7 +33,6 @@ PennyWise is a modern expense management app that helps you track your income, e
 - **Local Storage** - All exports saved to a dedicated PennyWise folder
 
 ### 🔒 Security & Privacy
-- **Local Authentication** - Biometric authentication support
 - **Offline First** - All data stored locally using Hive database
 - **No Cloud Dependency** - Your financial data stays on your device
 
@@ -113,7 +112,7 @@ Contributions, issues, and feature requests are welcome! Feel free to check the 
 ## 👨‍💻 Author
 
 **Your Name**
-- GitHub: [@yourusername](https://github.com/yourusername)
+- GitHub: [@Bhanu7773-Dev](https://github.com/Bhanu7773-dev))
 
 ## 🌟 Show your support
 
