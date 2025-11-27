@@ -8,7 +8,9 @@ import '../models/transaction.dart';
 import '../utils/app_theme.dart';
 
 class AddTransactionScreen extends StatefulWidget {
-  const AddTransactionScreen({super.key});
+  final bool initialIsExpense;
+
+  const AddTransactionScreen({super.key, this.initialIsExpense = true});
 
   @override
   State<AddTransactionScreen> createState() => _AddTransactionScreenState();
@@ -17,8 +19,14 @@ class AddTransactionScreen extends StatefulWidget {
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
   String _amount = '0';
   String _note = '';
-  bool _isExpense = true;
+  late bool _isExpense;
   String _selectedCategory = 'Food';
+
+  @override
+  void initState() {
+    super.initState();
+    _isExpense = widget.initialIsExpense;
+  }
 
   final List<String> _categories = [
     'Food',
@@ -214,22 +222,26 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           SizedBox(
             width: double.infinity,
             height: 60,
-            child: ElevatedButton(
-              onPressed: _saveTransaction,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _isExpense
-                    ? AppTheme.expense
-                    : AppTheme.income,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+            child: Hero(
+              tag:
+                  'hero_action_${widget.initialIsExpense ? 'expense' : 'income'}',
+              child: ElevatedButton(
+                onPressed: _saveTransaction,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isExpense
+                      ? AppTheme.expense
+                      : AppTheme.income,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
-              ),
-              child: const Text(
-                'SAVE TRANSACTION',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                child: const Text(
+                  'SAVE TRANSACTION',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),

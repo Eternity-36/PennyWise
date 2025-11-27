@@ -13,12 +13,14 @@ class MoneyProvider extends ChangeNotifier {
   String _userName = 'User';
   String _currencySymbol = '₹';
   String? _userId;
+  String? _photoURL;
   Budget? _currentBudget;
   List<Transaction> _transactions = [];
 
   String get userName => _userName;
   String get currencySymbol => _currencySymbol;
   String? get userId => _userId;
+  String? get photoURL => _photoURL;
   Budget? get currentBudget => _currentBudget;
   Box get settingsBox => _settingsBox;
   List<Transaction> get transactions => _transactions;
@@ -64,6 +66,7 @@ class MoneyProvider extends ChangeNotifier {
     _userName = _settingsBox.get('userName', defaultValue: 'User');
     _currencySymbol = _settingsBox.get('currencySymbol', defaultValue: '₹');
     _userId = _settingsBox.get('userId');
+    _photoURL = _settingsBox.get('photoURL');
     notifyListeners();
   }
 
@@ -214,16 +217,23 @@ class MoneyProvider extends ChangeNotifier {
     required String currency,
     required bool isGuest,
     required String? userId,
+    String? photoURL,
   }) async {
     _userName = name;
     _currencySymbol = currency;
     _userId = userId;
+    _photoURL = photoURL;
 
     // Persist to Hive (local settings)
     await _settingsBox.put('userName', name);
     await _settingsBox.put('currencySymbol', currency);
     await _settingsBox.put('isGuest', isGuest);
     await _settingsBox.put('userId', userId);
+    if (photoURL != null) {
+      await _settingsBox.put('photoURL', photoURL);
+    } else {
+      await _settingsBox.delete('photoURL');
+    }
 
     // If Guest, save backup credentials for re-login
     if (isGuest) {
@@ -281,6 +291,7 @@ class MoneyProvider extends ChangeNotifier {
     await _settingsBox.delete('currencySymbol');
     await _settingsBox.delete('isGuest');
     await _settingsBox.delete('userId');
+    await _settingsBox.delete('photoURL');
 
     // NOTE: We do NOT delete 'guestUserId', 'guestUserName', etc.
     // This allows guests to "log back in" and restore their data.

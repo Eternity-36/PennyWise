@@ -47,6 +47,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           currency: '₹',
           isGuest: false,
           userId: user.uid,
+          photoURL: user.photoURL,
         );
       } else {
         setState(() => _isAnimating = false);
@@ -103,6 +104,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     required String currency,
     required bool isGuest,
     required String? userId,
+    String? photoURL,
   }) async {
     try {
       final provider = Provider.of<MoneyProvider>(context, listen: false);
@@ -111,6 +113,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         currency: currency,
         isGuest: isGuest,
         userId: userId,
+        photoURL: photoURL,
       );
 
       if (mounted) {
