@@ -11,6 +11,7 @@ class MoneyProvider extends ChangeNotifier {
   final Box _settingsBox = Hive.box('settings');
   late Box<Budget> _budgetBox;
   String _userName = 'User';
+  String _cardName = 'VISA';
   String _currencySymbol = '₹';
   String? _userId;
   String? _photoURL;
@@ -18,6 +19,7 @@ class MoneyProvider extends ChangeNotifier {
   List<Transaction> _transactions = [];
 
   String get userName => _userName;
+  String get cardName => _cardName;
   String get currencySymbol => _currencySymbol;
   String? get userId => _userId;
   String? get photoURL => _photoURL;
@@ -64,6 +66,7 @@ class MoneyProvider extends ChangeNotifier {
 
   void _loadSettings() {
     _userName = _settingsBox.get('userName', defaultValue: 'User');
+    _cardName = _settingsBox.get('cardName', defaultValue: 'VISA');
     _currencySymbol = _settingsBox.get('currencySymbol', defaultValue: '₹');
     _userId = _settingsBox.get('userId');
     _photoURL = _settingsBox.get('photoURL');
@@ -152,6 +155,12 @@ class MoneyProvider extends ChangeNotifier {
   Future<void> setUserName(String name) async {
     _userName = name;
     await _settingsBox.put('userName', name);
+    notifyListeners();
+  }
+
+  Future<void> setCardName(String name) async {
+    _cardName = name;
+    await _settingsBox.put('cardName', name);
     notifyListeners();
   }
 

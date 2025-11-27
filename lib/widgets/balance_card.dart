@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -5,13 +6,80 @@ import 'package:intl/intl.dart';
 import '../providers/money_provider.dart';
 import '../utils/app_theme.dart';
 
-class BalanceCard extends StatelessWidget {
+class BalanceCard extends StatefulWidget {
   const BalanceCard({super.key});
+
+  @override
+  State<BalanceCard> createState() => _BalanceCardState();
+}
+
+class _BalanceCardState extends State<BalanceCard> {
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<MoneyProvider>(context);
 
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // PageView for cards
+        SizedBox(
+          height: 280,
+          child: PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentPage = index;
+              });
+            },
+            children: [
+              _buildMainCard(context, provider),
+              _buildAddCardPlaceholder(context),
+            ],
+          ),
+        ),
+
+        // Swipe hint arrow (only on first page)
+        if (_currentPage == 0)
+          Positioned(
+                right: 16,
+                top: 80,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.chevron_left,
+                      color: Colors.white.withValues(alpha: 0.4),
+                      size: 24,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Swipe',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+              .animate(onPlay: (controller) => controller.repeat(reverse: true))
+              .fadeIn(duration: 800.ms)
+              .slideX(begin: 0.2, end: 0, duration: 1500.ms),
+      ],
+    );
+  }
+
+  Widget _buildMainCard(BuildContext context, MoneyProvider provider) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -45,14 +113,30 @@ class BalanceCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildChip(),
-              const Text(
-                'VISA',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  fontStyle: FontStyle.italic,
-                  letterSpacing: 1.5,
+              GestureDetector(
+                onTap: () => _showCardNameDialog(context, provider),
+                child: Row(
+                  children: [
+                    Text(
+                      provider.cardName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        fontStyle: FontStyle.italic,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        Icons.edit,
+                        color: Colors.white.withValues(alpha: 0.6),
+                        size: 20,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -237,29 +321,166 @@ class BalanceCard extends StatelessWidget {
     ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.3, end: 0);
   }
 
+  Widget _buildAddCardPlaceholder(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF1A1F38).withValues(alpha: 0.5),
+            const Color(0xFF2D3459).withValues(alpha: 0.5),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 2,
+          style: BorderStyle.solid,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+              ),
+              child: Icon(
+                Icons.add,
+                color: Colors.white.withValues(alpha: 0.6),
+                size: 40,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Add New Card',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Coming Soon',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(duration: 600.ms).scale(begin: const Offset(0.95, 0.95));
+  }
+
   void _showBudgetDialog(BuildContext context, MoneyProvider provider) {
-    final controller = TextEditingController(
-      text: provider.currentBudget?.monthlyLimit.toStringAsFixed(0) ?? '',
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        opaque: false,
+        barrierDismissible: true,
+        barrierColor: Colors.transparent,
+        transitionDuration: const Duration(milliseconds: 800),
+        reverseTransitionDuration: const Duration(milliseconds: 600),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return _AnimatedBudgetDialog(
+            provider: provider,
+            animation: animation,
+          );
+        },
+      ),
     );
+  }
+
+  void _showCardNameDialog(BuildContext context, MoneyProvider provider) {
+    final cardNameController = TextEditingController(text: provider.cardName);
+    final cardHolderController = TextEditingController(text: provider.userName);
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.surface,
         title: const Text(
-          'Set Monthly Budget',
+          'Edit Card Details',
           style: TextStyle(color: Colors.white),
         ),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: 'Enter amount',
-            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
-            prefixText: '${provider.currencySymbol} ',
-            prefixStyle: const TextStyle(color: Colors.white),
-          ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: cardNameController,
+              style: const TextStyle(color: Colors.white),
+              textCapitalization: TextCapitalization.characters,
+              maxLength: 20,
+              decoration: InputDecoration(
+                labelText: 'Card Name',
+                labelStyle: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
+                hintText: 'e.g., VISA, MASTERCARD',
+                hintStyle: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5),
+                ),
+                counterStyle: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5),
+                ),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.3),
+                  ),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: AppTheme.primary),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: cardHolderController,
+              style: const TextStyle(color: Colors.white),
+              textCapitalization: TextCapitalization.words,
+              maxLength: 30,
+              decoration: InputDecoration(
+                labelText: 'Cardholder Name',
+                labelStyle: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
+                hintText: 'e.g., John Doe',
+                hintStyle: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5),
+                ),
+                counterStyle: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5),
+                ),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.3),
+                  ),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: AppTheme.primary),
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -268,11 +489,13 @@ class BalanceCard extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              final amount = double.tryParse(controller.text);
-              if (amount != null && amount > 0) {
-                provider.setBudget(amount);
-                Navigator.pop(context);
+              if (cardNameController.text.isNotEmpty) {
+                provider.setCardName(cardNameController.text.toUpperCase());
               }
+              if (cardHolderController.text.isNotEmpty) {
+                provider.setUserName(cardHolderController.text);
+              }
+              Navigator.pop(context);
             },
             child: const Text('Save'),
           ),
@@ -346,6 +569,313 @@ class BalanceCard extends StatelessWidget {
             color: color,
             fontSize: 15,
             fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AnimatedBudgetDialog extends StatefulWidget {
+  final MoneyProvider provider;
+  final Animation<double> animation;
+
+  const _AnimatedBudgetDialog({
+    required this.provider,
+    required this.animation,
+  });
+
+  @override
+  State<_AnimatedBudgetDialog> createState() => _AnimatedBudgetDialogState();
+}
+
+class _AnimatedBudgetDialogState extends State<_AnimatedBudgetDialog> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text:
+          widget.provider.currentBudget?.monthlyLimit.toStringAsFixed(0) ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scaleAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(
+        parent: widget.animation,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack),
+      ),
+    );
+
+    final blurAnimation = Tween<double>(begin: 0.0, end: 5.0).animate(
+      CurvedAnimation(
+        parent: widget.animation,
+        curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
+      ),
+    );
+
+    final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: widget.animation,
+        curve: const Interval(0.3, 0.8, curve: Curves.easeIn),
+      ),
+    );
+
+    return Stack(
+      children: [
+        AnimatedBuilder(
+          animation: blurAnimation,
+          builder: (context, child) {
+            return BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: blurAnimation.value,
+                sigmaY: blurAnimation.value,
+              ),
+              child: Container(
+                color: Colors.black.withValues(
+                  alpha: blurAnimation.value * 0.1,
+                ),
+              ),
+            );
+          },
+        ),
+        Center(
+          child: AnimatedBuilder(
+            animation: widget.animation,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: scaleAnimation.value,
+                child: Transform.translate(
+                  offset: Offset(0, -20 * (1 - widget.animation.value)),
+                  child: Opacity(
+                    opacity: fadeAnimation.value,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Container(
+                        width: MediaQuery.of(context).size.width * 0.85,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFF1A1F38),
+                              const Color(0xFF2D3459),
+                              AppTheme.primary.withValues(alpha: 0.6),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.1),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.5),
+                              blurRadius: 30,
+                              spreadRadius: 10,
+                              offset: const Offset(0, 20),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                                  'Set Monthly Budget',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                )
+                                .animate()
+                                .fadeIn(delay: 400.ms)
+                                .slideY(begin: -0.2),
+                            const SizedBox(height: 24),
+                            TextField(
+                                  controller: _controller,
+                                  keyboardType: TextInputType.number,
+                                  autofocus: true,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  decoration: InputDecoration(
+                                    hintText: '0',
+                                    hintStyle: TextStyle(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                    ),
+                                    prefixText:
+                                        '${widget.provider.currencySymbol} ',
+                                    prefixStyle: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(
+                                        color: AppTheme.primary,
+                                        width: 2,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .animate()
+                                .fadeIn(delay: 500.ms)
+                                .scale(begin: const Offset(0.8, 0.8)),
+                            const SizedBox(height: 24),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                Expanded(
+                                  child:
+                                      TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                            style: TextButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 16,
+                                                  ),
+                                              backgroundColor: Colors.white
+                                                  .withValues(alpha: 0.1),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                            child: const Text(
+                                              'Cancel',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          )
+                                          .animate()
+                                          .fadeIn(delay: 600.ms)
+                                          .slideX(begin: -0.2),
+                                ),
+                                if (widget.provider.currentBudget != null) ...[
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child:
+                                        TextButton(
+                                              onPressed: () {
+                                                widget.provider.setBudget(0);
+                                                Navigator.pop(context);
+                                              },
+                                              style: TextButton.styleFrom(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 16,
+                                                    ),
+                                                backgroundColor: AppTheme
+                                                    .expense
+                                                    .withValues(alpha: 0.2),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                'Remove',
+                                                style: TextStyle(
+                                                  color: AppTheme.expense,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            )
+                                            .animate()
+                                            .fadeIn(delay: 650.ms)
+                                            .scale(
+                                              begin: const Offset(0.8, 0.8),
+                                            ),
+                                  ),
+                                ],
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child:
+                                      ElevatedButton(
+                                            onPressed: () {
+                                              final amount = double.tryParse(
+                                                _controller.text,
+                                              );
+                                              if (amount != null &&
+                                                  amount > 0) {
+                                                widget.provider.setBudget(
+                                                  amount,
+                                                );
+                                                Navigator.pop(context);
+                                              }
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 16,
+                                                  ),
+                                              backgroundColor: AppTheme.primary,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                            child: const Text(
+                                              'Save',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          )
+                                          .animate()
+                                          .fadeIn(delay: 700.ms)
+                                          .slideX(begin: 0.2),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],

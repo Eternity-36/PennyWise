@@ -66,7 +66,20 @@ class TransactionList extends StatelessWidget {
           color: AppTheme.primary,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Icon(Icons.edit, color: Colors.black),
+        child: Row(
+          children: [
+            const Icon(Icons.edit, color: Colors.white, size: 24),
+            const SizedBox(width: 8),
+            const Text(
+              'Edit',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
       secondaryBackground: Container(
         alignment: Alignment.centerRight,
@@ -75,7 +88,21 @@ class TransactionList extends StatelessWidget {
           color: AppTheme.expense,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Icon(Icons.delete, color: Colors.white),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            const Text(
+              'Delete',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.delete, color: Colors.white, size: 24),
+          ],
+        ),
       ),
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.startToEnd) {
@@ -104,7 +131,10 @@ class TransactionList extends StatelessWidget {
           ).deleteTransaction(transaction);
         }
       },
-      child:
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Main transaction container
           Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(16),
@@ -171,6 +201,49 @@ class TransactionList extends StatelessWidget {
               .animate(delay: (100 * index).ms)
               .slideX(begin: 0.2, end: 0, curve: Curves.easeOutQuad)
               .fadeIn(),
+
+          // Swipe hint indicators (only on first transaction)
+          if (index == 0) ...[
+            // Left chevron hint
+            Positioned(
+                  left: -8,
+                  top: 0,
+                  bottom: 12,
+                  child: Center(
+                    child: Icon(
+                      Icons.chevron_right,
+                      color: AppTheme.primary.withValues(alpha: 0.7),
+                      size: 32,
+                    ),
+                  ),
+                )
+                .animate(
+                  onPlay: (controller) => controller.repeat(reverse: true),
+                )
+                .fadeIn(duration: 800.ms)
+                .slideX(begin: -0.3, end: 0, duration: 1500.ms),
+
+            // Right chevron hint
+            Positioned(
+                  right: -8,
+                  top: 0,
+                  bottom: 12,
+                  child: Center(
+                    child: Icon(
+                      Icons.chevron_left,
+                      color: AppTheme.expense.withValues(alpha: 0.7),
+                      size: 32,
+                    ),
+                  ),
+                )
+                .animate(
+                  onPlay: (controller) => controller.repeat(reverse: true),
+                )
+                .fadeIn(duration: 800.ms)
+                .slideX(begin: 0.3, end: 0, duration: 1500.ms),
+          ],
+        ],
+      ),
     );
   }
 }

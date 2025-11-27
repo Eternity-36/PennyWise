@@ -5,19 +5,55 @@ import '../providers/money_provider.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/transaction_list.dart';
 import '../widgets/profile_dialog.dart';
+import '../widgets/custom_bottom_nav_bar.dart';
 import 'add_transaction_screen.dart';
 import 'analytics_screen.dart';
+import 'advance_screen.dart';
 import 'settings_screen.dart';
 import '../utils/app_theme.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late PageController _pageController;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onPageChanged(int index) {
+    setState(() {
+      _currentPage = index;
+    });
+  }
+
+  void _onNavItemTapped(int index) {
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<MoneyProvider>(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0F111A), // Deep dark background
+      backgroundColor: const Color(0xFF0F111A),
       body: Stack(
         children: [
           // Background Gradient
@@ -37,232 +73,28 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
-          // Decorative Circle
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.primary.withValues(alpha: 0.05),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primary.withValues(alpha: 0.1),
-                    blurRadius: 100,
-                    spreadRadius: 50,
-                  ),
-                ],
-              ),
-            ),
+          // PageView
+          PageView(
+            controller: _pageController,
+            onPageChanged: _onPageChanged,
+            children: [
+              _buildHomePage(provider),
+              const AnalyticsScreen(),
+              const AdvanceScreen(),
+              const SettingsScreen(),
+            ],
           ),
 
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-
-                  // Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Welcome Back,',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.6),
-                              fontSize: 14,
-                              letterSpacing: 0.5,
-                            ),
-                          ).animate().fadeIn().slideX(begin: -0.2),
-                          const SizedBox(height: 4),
-                          Text(
-                            provider.userName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.2),
-                        ],
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            PageRouteBuilder(
-                              opaque: false,
-                              barrierDismissible: true,
-                              barrierColor: Colors.black.withValues(alpha: 0.5),
-                              transitionDuration: const Duration(
-                                milliseconds: 800,
-                              ),
-                              reverseTransitionDuration: const Duration(
-                                milliseconds: 600,
-                              ),
-                              pageBuilder: (context, _, __) =>
-                                  const ProfileDialog(),
-                              transitionsBuilder:
-                                  (context, animation, _, child) {
-                                    const curve = Curves.fastOutSlowIn;
-                                    final curvedAnimation = CurvedAnimation(
-                                      parent: animation,
-                                      curve: curve,
-                                      reverseCurve: curve.flipped,
-                                    );
-                                    return ScaleTransition(
-                                      scale: curvedAnimation,
-                                      alignment: Alignment.topRight,
-                                      child: FadeTransition(
-                                        opacity: curvedAnimation,
-                                        child: child,
-                                      ),
-                                    );
-                                  },
-                            ),
-                          );
-                        },
-                        child: Hero(
-                          tag: 'profile_ring',
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppTheme.primary,
-                                width: 2,
-                              ),
-                            ),
-                            child: CircleAvatar(
-                              radius: 20,
-                              backgroundColor: const Color(0xFF2D3459),
-                              backgroundImage: provider.photoURL != null
-                                  ? NetworkImage(provider.photoURL!)
-                                  : null,
-                              child: provider.photoURL == null
-                                  ? const Icon(
-                                      Icons.person,
-                                      color: Colors.white,
-                                    )
-                                  : null,
-                            ),
-                          ),
-                        ),
-                      ).animate().scale(delay: 200.ms),
-                    ],
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Balance Card
-                  const BalanceCard()
-                      .animate()
-                      .fadeIn(delay: 300.ms)
-                      .slideY(begin: 0.2),
-
-                  const SizedBox(height: 32),
-
-                  // Quick Actions
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildQuickAction(
-                        context,
-                        Icons.arrow_upward_rounded,
-                        'Expense',
-                        () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AddTransactionScreen(
-                              initialIsExpense: true,
-                            ),
-                          ),
-                        ),
-                        heroTag: 'hero_action_expense',
-                      ),
-                      _buildQuickAction(
-                        context,
-                        Icons.arrow_downward_rounded,
-                        'Income',
-                        () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AddTransactionScreen(
-                              initialIsExpense: false,
-                            ),
-                          ),
-                        ),
-                        heroTag: 'hero_action_income',
-                      ),
-                      _buildQuickAction(
-                        context,
-                        Icons.history_rounded,
-                        'History',
-                        () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AnalyticsScreen(),
-                          ),
-                        ),
-                        heroTag: 'hero_action_history',
-                      ),
-                      _buildQuickAction(
-                        context,
-                        Icons.more_horiz_rounded,
-                        'More',
-                        () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SettingsScreen(),
-                          ),
-                        ),
-                        heroTag: 'hero_action_more',
-                      ),
-                    ],
-                  ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2),
-
-                  const SizedBox(height: 32),
-
-                  // Recent Transactions Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Recent Transactions',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {},
-                        child: Text(
-                          'View All',
-                          style: TextStyle(
-                            color: AppTheme.primary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ).animate().fadeIn(delay: 500.ms),
-
-                  const SizedBox(height: 16),
-
-                  // Transaction List
-                  const Expanded(child: TransactionList()),
-                ],
-              ),
+          // Floating Navigation Bar
+          Positioned(
+            bottom: 32,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: CustomBottomNavBar(
+                selectedIndex: _currentPage,
+                onItemSelected: _onNavItemTapped,
+              ).animate().fadeIn(delay: 1000.ms).slideY(begin: 1.0),
             ),
           ),
         ],
@@ -270,52 +102,345 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildHomePage(MoneyProvider provider) {
+    return Stack(
+      children: [
+        // Decorative Circle
+        Positioned(
+          top: -100,
+          right: -100,
+          child: Container(
+            width: 300,
+            height: 300,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppTheme.primary.withOpacity(0.05),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withOpacity(0.1),
+                  blurRadius: 100,
+                  spreadRadius: 50,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFF0F111A),
+                    const Color(0xFF1A1F38),
+                    const Color(0xFF0F111A),
+                  ],
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20.0, 0, 20.0, 100.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 16),
+
+                    // Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Welcome Back,',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.6),
+                                fontSize: 14,
+                                letterSpacing: 0.5,
+                              ),
+                            ).animate().fadeIn().slideX(begin: -0.2),
+                            const SizedBox(height: 4),
+                            Text(
+                                  provider.userName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                )
+                                .animate()
+                                .fadeIn(delay: 100.ms)
+                                .slideX(begin: -0.2),
+                          ],
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              PageRouteBuilder(
+                                opaque: false,
+                                barrierDismissible: true,
+                                barrierColor: Colors.black.withOpacity(0.5),
+                                transitionDuration: const Duration(
+                                  milliseconds: 800,
+                                ),
+                                reverseTransitionDuration: const Duration(
+                                  milliseconds: 600,
+                                ),
+                                pageBuilder: (context, _, __) =>
+                                    const ProfileDialog(),
+                                transitionsBuilder:
+                                    (context, animation, _, child) {
+                                      const curve = Curves.fastOutSlowIn;
+                                      final curvedAnimation = CurvedAnimation(
+                                        parent: animation,
+                                        curve: curve,
+                                        reverseCurve: curve.flipped,
+                                      );
+                                      return ScaleTransition(
+                                        scale: curvedAnimation,
+                                        alignment: Alignment.topRight,
+                                        child: FadeTransition(
+                                          opacity: curvedAnimation,
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                              ),
+                            );
+                          },
+                          child: Hero(
+                            tag: 'profile_ring',
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppTheme.primary,
+                                  width: 2,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 20,
+                                backgroundColor: const Color(0xFF2D3459),
+                                backgroundImage: provider.photoURL != null
+                                    ? NetworkImage(provider.photoURL!)
+                                    : null,
+                                child: provider.photoURL == null
+                                    ? const Icon(
+                                        Icons.person,
+                                        color: Colors.white,
+                                      )
+                                    : null,
+                              ),
+                            ),
+                          ),
+                        ).animate().scale(delay: 200.ms),
+                      ],
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Balance Card
+                    const BalanceCard()
+                        .animate()
+                        .fadeIn(delay: 300.ms)
+                        .slideY(begin: 0.2),
+
+                    const SizedBox(height: 32),
+
+                    // Quick Actions
+                    Text(
+                      'Quick Actions',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ).animate().fadeIn(delay: 400.ms),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildQuickAction(
+                          context,
+                          icon: Icons.arrow_upward_rounded,
+                          label: 'Expense',
+                          color: AppTheme.expense,
+                          delay: 500,
+                          heroTag: 'hero_action_expense',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const AddTransactionScreen(
+                                      initialIsExpense: true,
+                                    ),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildQuickAction(
+                          context,
+                          icon: Icons.arrow_downward_rounded,
+                          label: 'Income',
+                          color: AppTheme.income,
+                          delay: 600,
+                          heroTag: 'hero_action_income',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const AddTransactionScreen(
+                                      initialIsExpense: false,
+                                    ),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildQuickAction(
+                          context,
+                          icon: Icons.history_rounded,
+                          label: 'History',
+                          color: const Color(0xFF6366F1),
+                          delay: 700,
+                          heroTag: 'hero_action_history',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const AnalyticsScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildQuickAction(
+                          context,
+                          icon: Icons.more_horiz_rounded,
+                          label: 'More',
+                          color: Colors.white,
+                          delay: 800,
+                          heroTag: 'hero_action_more',
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('More features coming soon!'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Recent Transactions
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Recent Transactions',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            // Navigate to full history
+                          },
+                          child: Text(
+                            'View All',
+                            style: TextStyle(
+                              color: AppTheme.primary,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ).animate().fadeIn(delay: 900.ms),
+                    const SizedBox(height: 16),
+
+                    // Transaction List with fade-out gradient
+                    SizedBox(
+                      height: 400,
+                      child: ShaderMask(
+                        shaderCallback: (Rect bounds) {
+                          return LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.white,
+                              Colors.white,
+                              Colors.transparent,
+                            ],
+                            stops: const [0.0, 0.8, 1.0],
+                          ).createShader(bounds);
+                        },
+                        blendMode: BlendMode.dstIn,
+                        child: const TransactionList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildQuickAction(
-    BuildContext context,
-    IconData icon,
-    String label,
-    VoidCallback onTap, {
-    String? heroTag,
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required int delay,
+    required VoidCallback onTap,
+    required String heroTag,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
           Hero(
-            tag: heroTag ?? UniqueKey().toString(),
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A1F38),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.05),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+            tag: heroTag,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: color.withValues(alpha: 0.2),
+                  width: 1,
                 ),
-                child: Icon(icon, color: Colors.white, size: 24),
               ),
+              child: Icon(icon, color: color, size: 28),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.6),
+              color: Colors.white.withValues(alpha: 0.7),
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
           ),
         ],
       ),
-    );
+    ).animate().fadeIn(delay: delay.ms).slideY(begin: 0.2);
   }
 }
