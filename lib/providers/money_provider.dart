@@ -5,6 +5,7 @@ import '../models/budget.dart';
 import '../repositories/transaction_repository.dart';
 import '../repositories/hive_transaction_repository.dart';
 import '../repositories/firestore_transaction_repository.dart';
+import '../services/sms_service.dart';
 
 class MoneyProvider extends ChangeNotifier {
   late TransactionRepository _repository;
@@ -17,6 +18,7 @@ class MoneyProvider extends ChangeNotifier {
   String? _photoURL;
   Budget? _currentBudget;
   List<Transaction> _transactions = [];
+  bool _smsTrackingEnabled = false;
 
   String get userName => _userName;
   String get cardName => _cardName;
@@ -26,6 +28,7 @@ class MoneyProvider extends ChangeNotifier {
   Budget? get currentBudget => _currentBudget;
   Box get settingsBox => _settingsBox;
   List<Transaction> get transactions => _transactions;
+  bool get smsTrackingEnabled => _smsTrackingEnabled;
 
   MoneyProvider() {
     _initRepository();
@@ -70,6 +73,19 @@ class MoneyProvider extends ChangeNotifier {
     _currencySymbol = _settingsBox.get('currencySymbol', defaultValue: '₹');
     _userId = _settingsBox.get('userId');
     _photoURL = _settingsBox.get('photoURL');
+    _smsTrackingEnabled = _settingsBox.get(
+      'smsTrackingEnabled',
+      defaultValue: false,
+    );
+    if (_smsTrackingEnabled) {
+      syncSmsTransactions();
+    }
+    notifyListeners();
+  }
+
+  Future<void> setSmsTracking(bool enabled) async {
+    _smsTrackingEnabled = enabled;
+    await _settingsBox.put('smsTrackingEnabled', enabled);
     notifyListeners();
   }
 
@@ -132,6 +148,7 @@ class MoneyProvider extends ChangeNotifier {
     final monthExpenses = _transactions
         .where(
           (t) =>
+              !t.isExcluded &&
               t.isExpense &&
               t.date.month == now.month &&
               t.date.year == now.year,
@@ -145,6 +162,7 @@ class MoneyProvider extends ChangeNotifier {
     return _transactions
         .where(
           (t) =>
+              !t.isExcluded &&
               t.isExpense &&
               t.date.month == now.month &&
               t.date.year == now.year,
@@ -156,6 +174,59 @@ class MoneyProvider extends ChangeNotifier {
     _userName = name;
     await _settingsBox.put('userName', name);
     notifyListeners();
+  }
+
+  final SmsService _smsService = SmsService();
+
+  Future<void> syncSmsTransactions() async {
+    if (!_smsTrackingEnabled) return;
+
+    // Use a default user ID for now as auth is not fully implemented or use a placeholder
+    final userId =
+        _userId ??
+        'guest_user'; // Use actual userId if available, else a guest placeholder
+
+    final smsTransactions = await _smsService.syncMessages(userId);
+
+    int addedCount = 0;
+    for (final transaction in smsTransactions) {
+      // Check for duplicates based on ID (Ref No)
+      final index = _transactions.indexWhere((t) => t.id == transaction.id);
+
+      if (index == -1) {
+        // New transaction
+        await _repository.addTransaction(transaction);
+        addedCount++;
+      } else {
+        // Existing transaction, check if we need to update SMS details
+        final existing = _transactions[index];
+        if (existing.smsBody == null && transaction.smsBody != null) {
+          // Create updated transaction preserving user edits (title, category)
+          final updated = Transaction(
+            id: existing.id,
+            title: existing.title,
+            amount: existing.amount,
+            date: existing.date,
+            isExpense: existing.isExpense,
+            category: existing.category,
+            accountId: existing.accountId,
+            userId: existing.userId,
+            smsBody: transaction.smsBody,
+            referenceNumber: transaction.referenceNumber,
+            bankName: transaction.bankName,
+            accountLast4: transaction.accountLast4,
+            isExcluded: existing.isExcluded,
+          );
+
+          await _repository.updateTransaction(updated);
+          addedCount++; // Count as update to trigger reload
+        }
+      }
+    }
+
+    if (addedCount > 0) {
+      await _loadTransactions(); // Reload all transactions from the repository
+    }
   }
 
   Future<void> setCardName(String name) async {
@@ -171,20 +242,20 @@ class MoneyProvider extends ChangeNotifier {
   }
 
   double get totalBalance {
-    return _transactions.fold(0, (sum, item) {
+    return _transactions.where((item) => !item.isExcluded).fold(0, (sum, item) {
       return sum + (item.isExpense ? -item.amount : item.amount);
     });
   }
 
   double get totalIncome {
     return _transactions
-        .where((item) => !item.isExpense)
+        .where((item) => !item.isExcluded && !item.isExpense)
         .fold(0, (sum, item) => sum + item.amount);
   }
 
   double get totalExpense {
     return _transactions
-        .where((item) => item.isExpense)
+        .where((item) => !item.isExcluded && item.isExpense)
         .fold(0, (sum, item) => sum + item.amount);
   }
 
@@ -213,10 +284,7 @@ class MoneyProvider extends ChangeNotifier {
     await _loadTransactions();
   }
 
-  Future<void> updateTransaction(
-    Transaction oldTransaction,
-    Transaction newTransaction,
-  ) async {
+  Future<void> updateTransaction(Transaction newTransaction) async {
     await _repository.updateTransaction(newTransaction);
     await _loadTransactions();
   }

@@ -7,6 +7,7 @@ import '../providers/money_provider.dart';
 import '../models/transaction.dart';
 import '../utils/app_theme.dart';
 import '../screens/edit_transaction_screen.dart';
+import '../screens/transaction_detail_screen.dart';
 
 class TransactionList extends StatelessWidget {
   const TransactionList({super.key});
@@ -135,67 +136,78 @@ class TransactionList extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           // Main transaction container
-          Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.surface.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.05),
+          GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          TransactionDetailScreen(transaction: transaction),
+                    ),
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.05),
+                    ),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color:
-                            (transaction.isExpense
-                                    ? AppTheme.expense
-                                    : AppTheme.income)
-                                .withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color:
+                              (transaction.isExpense
+                                      ? AppTheme.expense
+                                      : AppTheme.income)
+                                  .withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          transaction.isExpense
+                              ? Icons.arrow_upward_rounded
+                              : Icons.arrow_downward_rounded,
+                          color: transaction.isExpense
+                              ? AppTheme.expense
+                              : AppTheme.income,
+                          size: 20,
+                        ),
                       ),
-                      child: Icon(
-                        transaction.isExpense
-                            ? Icons.arrow_upward_rounded
-                            : Icons.arrow_downward_rounded,
-                        color: transaction.isExpense
-                            ? AppTheme.expense
-                            : AppTheme.income,
-                        size: 20,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              transaction.title,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              dateFormat.format(transaction.date),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: Colors.white54),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            transaction.title,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                          Text(
-                            dateFormat.format(transaction.date),
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: Colors.white54),
-                          ),
-                        ],
+                      Text(
+                        '${transaction.isExpense ? '-' : '+'}${provider.currencySymbol}${transaction.amount.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: transaction.isExpense
+                              ? AppTheme.expense
+                              : AppTheme.income,
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${transaction.isExpense ? '-' : '+'}${provider.currencySymbol}${transaction.amount.toStringAsFixed(0)}',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: transaction.isExpense
-                            ? AppTheme.expense
-                            : AppTheme.income,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               )
               .animate(delay: (100 * index).ms)

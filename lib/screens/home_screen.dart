@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'transaction_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';

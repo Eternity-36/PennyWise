@@ -28,6 +28,21 @@ class Transaction extends HiveObject {
   @HiveField(7)
   final String? userId;
 
+  @HiveField(8)
+  final String? smsBody;
+
+  @HiveField(9)
+  final String? referenceNumber;
+
+  @HiveField(10)
+  final String? bankName;
+
+  @HiveField(11)
+  final String? accountLast4;
+
+  @HiveField(12)
+  final bool isExcluded;
+
   Transaction({
     required this.id,
     required this.title,
@@ -37,6 +52,11 @@ class Transaction extends HiveObject {
     required this.category,
     this.accountId = 'default',
     this.userId,
+    this.smsBody,
+    this.referenceNumber,
+    this.bankName,
+    this.accountLast4,
+    this.isExcluded = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -49,6 +69,11 @@ class Transaction extends HiveObject {
       'category': category,
       'accountId': accountId,
       'userId': userId,
+      'smsBody': smsBody,
+      'referenceNumber': referenceNumber,
+      'bankName': bankName,
+      'accountLast4': accountLast4,
+      'isExcluded': isExcluded,
     };
   }
 
@@ -62,6 +87,11 @@ class Transaction extends HiveObject {
       category: json['category'],
       accountId: json['accountId'] ?? 'default',
       userId: json['userId'],
+      smsBody: json['smsBody'],
+      referenceNumber: json['referenceNumber'],
+      bankName: json['bankName'],
+      accountLast4: json['accountLast4'],
+      isExcluded: json['isExcluded'] ?? false,
     );
   }
 }

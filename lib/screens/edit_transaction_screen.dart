@@ -87,7 +87,7 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
     await Provider.of<MoneyProvider>(
       context,
       listen: false,
-    ).updateTransaction(widget.transaction, updatedTransaction);
+    ).updateTransaction(updatedTransaction);
 
     if (mounted) {
       Navigator.pop(context);
