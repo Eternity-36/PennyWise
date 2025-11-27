@@ -59,8 +59,11 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
         if (_amount.isNotEmpty) {
           _amount = _amount.substring(0, _amount.length - 1);
         }
-      } else if (value == 'C') {
-        _amount = '';
+      } else if (value == '.') {
+        if (!_amount.contains('.')) {
+          if (_amount.isEmpty) _amount = '0';
+          _amount += value;
+        }
       } else {
         if (_amount.length < 10) {
           _amount += value;
@@ -219,29 +222,6 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
               // Keypad
               _buildKeypad(),
               const SizedBox(height: 12),
-
-              // Save Button
-              SizedBox(
-                width: double.infinity,
-                height: 60,
-                child: ElevatedButton(
-                  onPressed: _saveTransaction,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: const Text(
-                    'UPDATE TRANSACTION',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
         ),
@@ -250,44 +230,78 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
   }
 
   Widget _buildKeypad() {
-    final keys = [
-      ['1', '2', '3'],
-      ['4', '5', '6'],
-      ['7', '8', '9'],
-      ['C', '0', '⌫'],
-    ];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          _buildKeyRow(['1', '2', '3']),
+          const SizedBox(height: 12),
+          _buildKeyRow(['4', '5', '6']),
+          const SizedBox(height: 12),
+          _buildKeyRow(['7', '8', '9']),
+          const SizedBox(height: 12),
+          _buildKeyRow(['.', '0', '⌫']),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: _saveTransaction,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                'UPDATE TRANSACTION',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                  letterSpacing: 1.0,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-    return Column(
-      children: keys.map((row) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: row.map((key) {
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: ElevatedButton(
-                    onPressed: () => _onKeyTap(key),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.surface,
-                      padding: const EdgeInsets.all(12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+  Widget _buildKeyRow(List<String> keys) {
+    return Row(
+      children: keys.map((key) {
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _onKeyTap(key),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  height: 60,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: AppTheme.surface.withValues(alpha: 0.3),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.05),
                     ),
-                    child: Text(
-                      key,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
+                  ),
+                  child: Text(
+                    key,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-              );
-            }).toList(),
+              ),
+            ),
           ),
         );
       }).toList(),

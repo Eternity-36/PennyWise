@@ -208,20 +208,20 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   Widget _buildKeypad() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
           _buildKeyRow(['1', '2', '3']),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           _buildKeyRow(['4', '5', '6']),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           _buildKeyRow(['7', '8', '9']),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           _buildKeyRow(['.', '0', '⌫']),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
-            height: 60,
+            height: 56,
             child: Hero(
               tag:
                   'hero_action_${widget.initialIsExpense ? 'expense' : 'income'}',
@@ -234,6 +234,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
+                  elevation: 0,
                 ),
                 child: const Text(
                   'SAVE TRANSACTION',
@@ -241,6 +242,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
+                    letterSpacing: 1.0,
                   ),
                 ),
               ),
@@ -253,25 +255,34 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   Widget _buildKeyRow(List<String> keys) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: keys.map((key) {
-        return InkWell(
-          onTap: () => _onKeyTap(key),
-          borderRadius: BorderRadius.circular(40),
-          child: Container(
-            width: 80,
-            height: 80,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppTheme.surface.withValues(alpha: 0.3),
-            ),
-            child: Text(
-              key,
-              style: const TextStyle(
-                fontSize: 28,
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _onKeyTap(key),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  height: 60,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: AppTheme.surface.withValues(alpha: 0.3),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.05),
+                    ),
+                  ),
+                  child: Text(
+                    key,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
