@@ -13,5 +13,31 @@ class Budget extends HiveObject {
   @HiveField(2)
   int year;
 
-  Budget({required this.monthlyLimit, required this.month, required this.year});
+  @HiveField(3)
+  String accountId;
+
+  Budget({
+    required this.monthlyLimit,
+    required this.month,
+    required this.year,
+    this.accountId = 'default',
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'monthlyLimit': monthlyLimit,
+      'month': month,
+      'year': year,
+      'accountId': accountId,
+    };
+  }
+
+  factory Budget.fromJson(Map<String, dynamic> json) {
+    return Budget(
+      monthlyLimit: json['monthlyLimit'],
+      month: json['month'],
+      year: json['year'],
+      accountId: json['accountId'] ?? 'default',
+    );
+  }
 }

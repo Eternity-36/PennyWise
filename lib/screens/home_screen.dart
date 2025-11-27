@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/money_provider.dart';
+import '../services/auth_service.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/transaction_list.dart';
 import 'add_transaction_screen.dart';
@@ -47,8 +48,19 @@ class HomeScreen extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: Colors.white),
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, '/onboarding');
+            onPressed: () async {
+              // Sign out from Firebase/Google
+              await AuthService().signOut();
+
+              // Clear local user data
+              if (context.mounted) {
+                await provider.logout();
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/onboarding',
+                  (route) => false,
+                );
+              }
             },
           ),
           IconButton(

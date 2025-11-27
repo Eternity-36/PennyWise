@@ -1,4 +1,4 @@
-package com.example.pennywise
+package com.dark.pennywise
 
 import io.flutter.embedding.android.FlutterActivity
 

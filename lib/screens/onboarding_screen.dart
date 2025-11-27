@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:uuid/uuid.dart';
 import '../providers/money_provider.dart';
+import '../services/auth_service.dart';
 import '../utils/app_theme.dart';
 import 'home_screen.dart';
 
@@ -13,52 +15,104 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
+  final PageController _pageController = PageController();
   final TextEditingController _nameController = TextEditingController();
+  final AuthService _authService = AuthService();
+
+  int _currentPage = 0;
   bool _isAnimating = false;
-  String _selectedCountry = 'India';
-
-  final Map<String, String> _countries = {
-    'India': '₹',
-    'United States': '\$',
-    'United Kingdom': '£',
-    'Europe': '€',
-    'Japan': '¥',
-    'Australia': 'A\$',
-    'Canada': 'C\$',
-    'China': '¥',
-    'Russia': '₽',
-    'Brazil': 'R\$',
-  };
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController.addListener(() {
-      setState(() {});
-    });
-  }
 
   @override
   void dispose() {
+    _pageController.dispose();
     _nameController.dispose();
     super.dispose();
   }
 
-  void _startAnimation() async {
-    if (_nameController.text.trim().isEmpty) return;
+  void _nextPage() {
+    _pageController.nextPage(
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+    );
+  }
 
-    setState(() {
-      _isAnimating = true;
-    });
-
+  Future<void> _handleGoogleLogin() async {
+    setState(() => _isAnimating = true);
     try {
-      // Save name and currency
-      final provider = Provider.of<MoneyProvider>(context, listen: false);
-      await provider.setUserName(_nameController.text.trim());
-      await provider.setCurrency(_countries[_selectedCountry]!);
+      final userCredential = await _authService.signInWithGoogle();
+      if (userCredential != null && mounted) {
+        final user = userCredential.user!;
+        await _initializeAndNavigate(
+          name: user.displayName ?? 'User',
+          currency: '₹',
+          isGuest: false,
+          userId: user.uid,
+        );
+      } else {
+        setState(() => _isAnimating = false);
+      }
+    } catch (e) {
+      debugPrint('Login Error: $e');
+      if (mounted) {
+        setState(() => _isAnimating = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Login Failed: $e')));
+      }
+    }
+  }
 
-      // Wait for animation to finish then navigate
-      await Future.delayed(const Duration(milliseconds: 800));
+  Future<void> _handleGuestLogin() async {
+    setState(() => _isAnimating = true);
+
+    // Check if there is a previous guest session to restore
+    final provider = Provider.of<MoneyProvider>(context, listen: false);
+    final prevGuestId = provider.settingsBox.get('guestUserId');
+    final prevGuestName = provider.settingsBox.get('guestUserName');
+    final prevGuestCurrency = provider.settingsBox.get('guestCurrency');
+
+    if (prevGuestId != null) {
+      // RESTORE PREVIOUS GUEST SESSION
+      await _initializeAndNavigate(
+        name: prevGuestName ?? _nameController.text.trim(),
+        currency: prevGuestCurrency ?? '₹',
+        isGuest: true,
+        userId: prevGuestId,
+      );
+    } else {
+      // CREATE NEW GUEST SESSION
+      if (_nameController.text.trim().isEmpty) {
+        setState(() => _isAnimating = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Please enter your name')));
+        return;
+      }
+
+      await _initializeAndNavigate(
+        name: _nameController.text.trim(),
+        currency: '₹',
+        isGuest: true,
+        userId: const Uuid().v4(),
+      );
+    }
+  }
+
+  Future<void> _initializeAndNavigate({
+    required String name,
+    required String currency,
+    required bool isGuest,
+    required String? userId,
+  }) async {
+    try {
+      final provider = Provider.of<MoneyProvider>(context, listen: false);
+      await provider.initializeUser(
+        name: name,
+        currency: currency,
+        isGuest: isGuest,
+        userId: userId,
+      );
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -66,11 +120,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         );
       }
     } catch (e) {
-      debugPrint('Error saving user name: $e');
+      debugPrint('Initialization Error: $e');
       if (mounted) {
-        setState(() {
-          _isAnimating = false;
-        });
+        setState(() => _isAnimating = false);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -105,292 +157,252 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
 
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Welcome to\nPennyWise',
-                    style: TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      height: 1.2,
-                    ),
-                  ).animate().fadeIn().slideY(begin: 0.3, end: 0),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Your premium expense tracker.',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.white.withValues(alpha: 0.7),
-                    ),
-                  ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.3, end: 0),
-                  const SizedBox(height: 48),
-
-                  // Card Animation Container
-                  SizedBox(
-                    height: 220,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // The Card (Visible when NOT animating exit)
-                        if (!_isAnimating)
-                          _buildVisaCard().animate().slideX(
-                            begin: -1.5,
-                            end: 0,
-                            duration: 800.ms,
-                            curve: Curves.easeOutBack,
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 48),
-
-                  // Input Field
-                  TextField(
-                    controller: _nameController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Enter your name',
-                      hintStyle: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                      ),
-                      filled: true,
-                      fillColor: AppTheme.surface,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      prefixIcon: const Icon(
-                        Icons.person_outline,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.3, end: 0),
-
-                  const SizedBox(height: 16),
-
-                  // Country Selector
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _selectedCountry,
-                        isExpanded: true,
-                        dropdownColor: AppTheme.surface,
-                        icon: const Icon(
-                          Icons.arrow_drop_down,
-                          color: Colors.white70,
-                        ),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                        ),
-                        items: _countries.keys.map((String country) {
-                          return DropdownMenuItem<String>(
-                            value: country,
-                            child: Row(
-                              children: [
-                                Text('${_countries[country]} '),
-                                Text(country),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          if (newValue != null) {
-                            setState(() {
-                              _selectedCountry = newValue;
-                            });
-                          }
-                        },
-                      ),
-                    ),
-                  ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.3, end: 0),
-
-                  const SizedBox(height: 24),
-
-                  // Continue Button
-                  ElevatedButton(
-                    onPressed: _isAnimating ? null : _startAnimation,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 8,
-                      shadowColor: AppTheme.primary.withValues(alpha: 0.5),
-                    ),
-                    child: _isAnimating
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text(
-                            'CONTINUE',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.3, end: 0),
-                ],
+          PageView(
+            controller: _pageController,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            children: [
+              _buildPage(
+                title: 'Track Your\nExpenses',
+                subtitle: 'Keep track of every penny you spend with ease.',
+                icon: Icons.account_balance_wallet_outlined,
               ),
-            ),
+              _buildPage(
+                title: 'Smart\nAnalytics',
+                subtitle:
+                    'Visualize your spending habits with beautiful charts.',
+                icon: Icons.pie_chart_outline,
+              ),
+              _buildSetupPage(),
+            ],
           ),
 
-          // Exit Animation Overlay (Trail + Card)
-          if (_isAnimating) ...[
-            // Trail Layer 1 (Faded Purple)
-            Positioned.fill(
-              child: Center(
-                child:
-                    Transform.translate(
-                      offset: const Offset(-40, 0), // Slight lag
-                      child: Opacity(
-                        opacity: 0.3,
-                        child: ColorFiltered(
-                          colorFilter: const ColorFilter.mode(
-                            Colors.purple,
-                            BlendMode.srcATop,
-                          ),
-                          child: _buildVisaCard(),
-                        ),
-                      ),
-                    ).animate().moveX(
-                      begin: 0,
-                      end: 500,
-                      duration: 700.ms,
-                      curve: Curves.easeIn,
-                    ),
-              ),
+          // Page Indicators
+          Positioned(
+            bottom: 40,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(3, (index) {
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: _currentPage == index ? 24 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: _currentPage == index
+                        ? AppTheme.primary
+                        : Colors.white.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                );
+              }),
             ),
-            // Trail Layer 2 (Less Faded Purple)
-            Positioned.fill(
-              child: Center(
-                child:
-                    Transform.translate(
-                      offset: const Offset(-20, 0), // Slight lag
-                      child: Opacity(
-                        opacity: 0.5,
-                        child: ColorFiltered(
-                          colorFilter: const ColorFilter.mode(
-                            Colors.purpleAccent,
-                            BlendMode.srcATop,
-                          ),
-                          child: _buildVisaCard(),
-                        ),
-                      ),
-                    ).animate().moveX(
-                      begin: 0,
-                      end: 500,
-                      duration: 650.ms,
-                      curve: Curves.easeIn,
-                    ),
-              ),
-            ),
-            // Main Card
-            Positioned.fill(
-              child: Center(
-                child: _buildVisaCard().animate().moveX(
-                  begin: 0,
-                  end: 500,
-                  duration: 600.ms,
-                  curve: Curves.easeIn,
-                ),
-              ),
-            ),
-          ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildVisaCard() {
-    return Container(
-      width: double.infinity,
-      height: 220,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF1A1F38),
-            const Color(0xFF2D3459),
-            AppTheme.primary.withValues(alpha: 0.6),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
+  Widget _buildPage({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.all(32.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                width: 45,
-                height: 30,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFFD4AF37),
-                      Color(0xFFF7EF8A),
-                      Color(0xFFD4AF37),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-              const Text(
-                'VISA',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
+          Icon(
+            icon,
+            size: 100,
+            color: AppTheme.primary,
+          ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
+          const SizedBox(height: 48),
           Text(
-            _nameController.text.isEmpty
-                ? 'YOUR NAME'
-                : _nameController.text.toUpperCase(),
+            title,
+            textAlign: TextAlign.center,
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
+              fontSize: 32,
               fontWeight: FontWeight.bold,
-              letterSpacing: 2.0,
+              color: Colors.white,
+              height: 1.2,
+            ),
+          ).animate().fadeIn().slideY(begin: 0.3, end: 0),
+          const SizedBox(height: 16),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.white.withValues(alpha: 0.7),
+            ),
+          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.3, end: 0),
+          const SizedBox(height: 48),
+          ElevatedButton(
+            onPressed: _nextPage,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.surface,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+            child: const Text(
+              'NEXT',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSetupPage() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.85, // Occupy more height
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Spacer(flex: 3), // Push content down
+            // Decorative Icon
+            Icon(
+              Icons.rocket_launch_outlined,
+              size: 80,
+              color: AppTheme.primary.withValues(alpha: 0.8),
+            ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
+
+            const SizedBox(height: 24),
+
+            const Text(
+              'Let\'s Get\nStarted',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 40,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                height: 1.2,
+              ),
+            ).animate().fadeIn().slideY(begin: 0.3, end: 0),
+
+            const SizedBox(height: 48),
+
+            // Google Sign In Button
+            ElevatedButton.icon(
+              onPressed: _isAnimating ? null : _handleGoogleLogin,
+              icon: const Icon(
+                Icons.g_mobiledata,
+                size: 32,
+                color: Colors.black,
+              ),
+              label: const Text(
+                'Continue with Google',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 0,
+              ),
+            ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.3, end: 0),
+
+            const SizedBox(height: 32),
+
+            const Row(
+              children: [
+                Expanded(child: Divider(color: Colors.white24)),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'OR',
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Expanded(child: Divider(color: Colors.white24)),
+              ],
+            ),
+
+            const SizedBox(height: 32),
+
+            // Guest Setup
+            TextField(
+              controller: _nameController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Enter your name',
+                hintStyle: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5),
+                ),
+                filled: true,
+                fillColor: AppTheme.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                prefixIcon: const Icon(
+                  Icons.person_outline,
+                  color: Colors.white70,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+              ),
+            ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.3, end: 0),
+
+            const SizedBox(height: 24),
+
+            ElevatedButton(
+              onPressed: _isAnimating ? null : _handleGuestLogin,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 4,
+                shadowColor: AppTheme.primary.withValues(alpha: 0.4),
+              ),
+              child: _isAnimating
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text(
+                      'CONTINUE AS GUEST',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+            ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.3, end: 0),
+
+            const Spacer(flex: 1), // Reduced bottom spacer
+          ],
+        ),
       ),
     );
   }
