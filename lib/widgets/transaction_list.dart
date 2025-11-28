@@ -9,15 +9,69 @@ import '../utils/app_theme.dart';
 import '../screens/edit_transaction_screen.dart';
 import '../screens/transaction_detail_screen.dart';
 
-class TransactionList extends StatelessWidget {
+class TransactionList extends StatefulWidget {
   const TransactionList({super.key});
+
+  @override
+  State<TransactionList> createState() => _TransactionListState();
+}
+
+class _TransactionListState extends State<TransactionList> {
+  List<Transaction> _localTransactions = [];
+  final Set<String> _animatedItems = {}; // Track items that have already animated
+  bool _isDeleting = false; // Prevent rebuilds during delete
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Only sync if not in the middle of deleting
+    if (!_isDeleting) {
+      final provider = Provider.of<MoneyProvider>(context);
+      if (_localTransactions.isEmpty || 
+          _shouldSync(provider.transactions)) {
+        _localTransactions = List.from(provider.transactions);
+      }
+    }
+  }
+
+  bool _shouldSync(List<Transaction> providerTransactions) {
+    // Only sync if there are new items (additions), not deletions
+    // This prevents the list from rebuilding after we delete
+    if (providerTransactions.length > _localTransactions.length) {
+      return true;
+    }
+    // Check if completely different list (e.g., filter changed)
+    if (_localTransactions.isNotEmpty && providerTransactions.isNotEmpty) {
+      final localIds = _localTransactions.map((t) => t.id).toSet();
+      final providerIds = providerTransactions.map((t) => t.id).toSet();
+      // If provider has items we don't have, sync
+      if (providerIds.difference(localIds).isNotEmpty) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void _removeTransaction(int index, Transaction transaction) {
+    _isDeleting = true;
+    setState(() {
+      _localTransactions.removeAt(index);
+    });
+    
+    // Delete in background
+    final provider = Provider.of<MoneyProvider>(context, listen: false);
+    provider.deleteTransaction(transaction).then((_) {
+      if (mounted) {
+        _isDeleting = false;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<MoneyProvider>(context);
-    final transactions = provider.transactions;
 
-    if (transactions.isEmpty) {
+    if (_localTransactions.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -41,10 +95,10 @@ class TransactionList extends StatelessWidget {
 
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 80), // Space for FAB
-      itemCount: transactions.length,
+      itemCount: _localTransactions.length,
       itemBuilder: (context, index) {
-        final transaction = transactions[index];
-        return _buildTransactionItem(context, transaction, index);
+        final transaction = _localTransactions[index];
+        return _buildTransactionItem(context, transaction, index, provider);
       },
     );
   }
@@ -53,8 +107,8 @@ class TransactionList extends StatelessWidget {
     BuildContext context,
     Transaction transaction,
     int index,
+    MoneyProvider provider,
   ) {
-    final provider = Provider.of<MoneyProvider>(context, listen: false);
     final dateFormat = DateFormat('MMM d, y');
 
     return Dismissible(
@@ -121,16 +175,17 @@ class TransactionList extends StatelessWidget {
           if (await Vibration.hasVibrator() == true) {
             Vibration.vibrate(duration: 50);
           }
-          return true; // Dismiss and delete
+          return true; // Allow dismiss animation
         }
       },
       onDismissed: (direction) {
-        if (context.mounted) {
-          Provider.of<MoneyProvider>(
-            context,
-            listen: false,
-          ).deleteTransaction(transaction);
-        }
+        print('');
+        print('>>>>>> SWIPE DELETE TRIGGERED <<<<<<');
+        print('Transaction: ${transaction.title}');
+        print('');
+        
+        // Remove from local list immediately (already animated out)
+        _removeTransaction(index, transaction);
       },
       child: Stack(
         clipBehavior: Clip.none,
@@ -210,9 +265,21 @@ class TransactionList extends StatelessWidget {
                   ),
                 ),
               )
-              .animate(delay: (100 * index).ms)
-              .slideX(begin: 0.2, end: 0, curve: Curves.easeOutQuad)
-              .fadeIn(),
+              .animate(
+                // Only animate if this item hasn't been shown before
+                autoPlay: !_animatedItems.contains(transaction.id),
+                onComplete: (_) => _animatedItems.add(transaction.id),
+              )
+              .slideX(
+                begin: _animatedItems.contains(transaction.id) ? 0 : 0.2,
+                end: 0,
+                curve: Curves.easeOutQuad,
+                delay: _animatedItems.contains(transaction.id) ? Duration.zero : (100 * index).ms,
+              )
+              .fadeIn(
+                begin: _animatedItems.contains(transaction.id) ? 1 : 0,
+                delay: _animatedItems.contains(transaction.id) ? Duration.zero : (100 * index).ms,
+              ),
 
           // Swipe hint indicators (only on first transaction)
           if (index == 0) ...[

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/money_provider.dart';
 import '../widgets/balance_card.dart';
+import '../widgets/budget_widget.dart';
 import '../widgets/transaction_list.dart';
 import '../widgets/profile_dialog.dart';
 import '../widgets/custom_bottom_nav_bar.dart';
@@ -270,7 +271,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       .fadeIn(delay: 300.ms)
                       .slideY(begin: 0.2),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
+
+                  // Budget Widget (separate from card)
+                  const BudgetWidget()
+                      .animate()
+                      .fadeIn(delay: 350.ms)
+                      .slideY(begin: 0.2),
+
+                  const SizedBox(height: 24),
 
                   // Quick Actions
                   Text(

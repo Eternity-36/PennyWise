@@ -12,7 +12,9 @@ import '../services/sms_service.dart';
 
 class MoneyProvider extends ChangeNotifier {
   late TransactionRepository _repository;
+  late HiveTransactionRepository _localRepository; // For SMS transactions (local only)
   final Box _settingsBox = Hive.box('settings');
+  final Box<String> _deletedSmsBox = Hive.box<String>('deletedSmsIds');
   late Box<Budget> _budgetBox;
   String _userName = 'User';
   String _cardName = 'VISA';
@@ -43,25 +45,46 @@ class MoneyProvider extends ChangeNotifier {
     final isGuest = _settingsBox.get('isGuest', defaultValue: true);
     final userId = _settingsBox.get('userId');
 
+    // Always initialize local repository for SMS transactions
+    final box = Hive.box<Transaction>('transactions');
+    _localRepository = HiveTransactionRepository(box);
+
     if (!isGuest && userId != null) {
       _repository = FirestoreTransactionRepository(userId);
     } else {
-      final box = Hive.box<Transaction>('transactions');
-      _repository = HiveTransactionRepository(box);
+      _repository = _localRepository;
     }
     _loadTransactions();
   }
 
   Future<void> _loadTransactions() async {
     try {
-      final allTransactions = await _repository.getTransactions();
-      if (_userId != null) {
-        _transactions = allTransactions
-            .where((t) => t.userId == _userId)
-            .toList();
-      } else {
-        _transactions = [];
+      // Get transactions from main repository (Firebase or Hive)
+      final mainTransactions = await _repository.getTransactions();
+      
+      // Get local SMS transactions (always from Hive)
+      final localTransactions = await _localRepository.getTransactions();
+      
+      // Merge: start with main transactions
+      final Map<String, Transaction> transactionMap = {};
+      
+      for (final t in mainTransactions) {
+        if (_userId != null && t.userId == _userId) {
+          transactionMap[t.id] = t;
+        }
       }
+      
+      // Add local SMS transactions (only those with smsBody)
+      for (final t in localTransactions) {
+        if (t.smsBody != null && t.smsBody!.isNotEmpty) {
+          // SMS transaction - add if not already present
+          if (!transactionMap.containsKey(t.id)) {
+            transactionMap[t.id] = t;
+          }
+        }
+      }
+      
+      _transactions = transactionMap.values.toList();
       _transactions.sort((a, b) => b.date.compareTo(a.date));
     } catch (e) {
       debugPrint('Error loading transactions: $e');
@@ -399,14 +422,28 @@ class MoneyProvider extends ChangeNotifier {
 
     final smsTransactions = await _smsService.syncMessages(userId);
 
+    // Get blocklisted IDs (deleted SMS transactions)
+    final blockedIds = _deletedSmsBox.values.toSet();
+    print('========== SMS SYNC ==========');
+    print('SMS Blocklist: ${blockedIds.length} IDs blocked');
+    print('Blocked IDs: $blockedIds');
+
     int addedCount = 0;
+    int blockedCount = 0;
     for (final transaction in smsTransactions) {
+      // Skip if this transaction was previously deleted by user
+      if (blockedIds.contains(transaction.id)) {
+        blockedCount++;
+        print('BLOCKED: ${transaction.id} - ${transaction.title} (Rs.${transaction.amount})');
+        continue;
+      }
+
       // Check for duplicates based on ID (Ref No)
       final index = _transactions.indexWhere((t) => t.id == transaction.id);
 
       if (index == -1) {
-        // New transaction
-        await _repository.addTransaction(transaction);
+        // New transaction - save to LOCAL storage only (not Firebase)
+        await _localRepository.addTransaction(transaction);
         addedCount++;
       } else {
         // Existing transaction, check if we need to update SMS details
@@ -429,12 +466,16 @@ class MoneyProvider extends ChangeNotifier {
             isExcluded: existing.isExcluded,
           );
 
-          await _repository.updateTransaction(updated);
+          // Update in LOCAL storage only (not Firebase)
+          await _localRepository.updateTransaction(updated);
           addedCount++; // Count as update to trigger reload
         }
       }
     }
 
+    print('SMS Sync Summary: $addedCount added, $blockedCount blocked');
+    print('===============================');
+    
     if (addedCount > 0) {
       await _loadTransactions(); // Reload all transactions from the repository
     }
@@ -491,8 +532,43 @@ class MoneyProvider extends ChangeNotifier {
   }
 
   Future<void> deleteTransaction(Transaction transaction) async {
-    await _repository.deleteTransaction(transaction.id);
+    print('');
+    print('========== DELETE CALLED ==========');
+    print('ID: ${transaction.id}');
+    print('Title: ${transaction.title}');
+    print('Amount: ${transaction.amount}');
+    print('Has SMS Body: ${transaction.smsBody != null && transaction.smsBody!.isNotEmpty}');
+    print('SMS Body: ${transaction.smsBody ?? "NULL"}');
+    
+    // If it's an SMS transaction, add to blocklist to prevent re-import
+    if (transaction.smsBody != null && transaction.smsBody!.isNotEmpty) {
+      await _deletedSmsBox.add(transaction.id);
+      print('>>> ADDED TO BLOCKLIST <<<');
+      print('Blocklist now has: ${_deletedSmsBox.length} items');
+      // SMS transactions are stored locally, so delete from local repository
+      await _localRepository.deleteTransaction(transaction.id);
+    } else {
+      print('>>> NOT AN SMS TRANSACTION - NOT BLOCKING <<<');
+      // Non-SMS transactions use the main repository
+      await _repository.deleteTransaction(transaction.id);
+    }
+    print('====================================');
+    print('');
+    
     await _loadTransactions();
+  }
+
+  // Get count of blocked SMS transactions
+  int get blockedSmsCount => _deletedSmsBox.length;
+
+  // Clear the SMS blocklist to allow re-importing deleted transactions
+  Future<void> clearSmsBlocklist() async {
+    final count = _deletedSmsBox.length;
+    await _deletedSmsBox.clear();
+    print('========== BLOCKLIST CLEARED ==========');
+    print('Cleared $count blocked SMS IDs');
+    print('======================================');
+    notifyListeners();
   }
 
   Future<void> updateTransaction(Transaction newTransaction) async {

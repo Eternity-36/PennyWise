@@ -30,13 +30,14 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       bankName: fields[10] as String?,
       accountLast4: fields[11] as String?,
       isExcluded: fields[12] as bool,
+      notes: fields[13] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Transaction obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -62,7 +63,9 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       ..writeByte(11)
       ..write(obj.accountLast4)
       ..writeByte(12)
-      ..write(obj.isExcluded);
+      ..write(obj.isExcluded)
+      ..writeByte(13)
+      ..write(obj.notes);
   }
 
   @override

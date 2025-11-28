@@ -70,6 +70,7 @@ class CustomBottomNavBar extends StatelessWidget {
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isSelected = selectedIndex == index;
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () => onItemSelected(index),
       child: Container(
         width: 48,

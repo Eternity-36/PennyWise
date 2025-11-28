@@ -43,6 +43,9 @@ class Transaction extends HiveObject {
   @HiveField(12)
   final bool isExcluded;
 
+  @HiveField(13)
+  final String? notes;
+
   Transaction({
     required this.id,
     required this.title,
@@ -57,6 +60,7 @@ class Transaction extends HiveObject {
     this.bankName,
     this.accountLast4,
     this.isExcluded = false,
+    this.notes,
   });
 
   Map<String, dynamic> toJson() {
@@ -74,6 +78,7 @@ class Transaction extends HiveObject {
       'bankName': bankName,
       'accountLast4': accountLast4,
       'isExcluded': isExcluded,
+      'notes': notes,
     };
   }
 
@@ -92,6 +97,7 @@ class Transaction extends HiveObject {
       bankName: json['bankName'],
       accountLast4: json['accountLast4'],
       isExcluded: json['isExcluded'] ?? false,
+      notes: json['notes'],
     );
   }
 }

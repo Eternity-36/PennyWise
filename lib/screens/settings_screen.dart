@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/money_provider.dart';
 import '../utils/app_theme.dart';
 import '../services/export_service.dart';
+import 'design_playground_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -60,10 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: const Text('Settings', style: TextStyle(color: Colors.white)),
       ),
       body: ListView(
@@ -81,6 +79,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             'Generate PDF report',
             Icons.picture_as_pdf,
             () => _exportData('PDF'),
+          ),
+          const SizedBox(height: 24),
+          _buildSection('Developer'),
+          _buildActionTile(
+            'Design Playground',
+            'Preview card designs',
+            Icons.palette,
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const DesignPlaygroundScreen(),
+              ),
+            ),
           ),
           const SizedBox(height: 24),
           _buildSection('About'),

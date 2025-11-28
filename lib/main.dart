@@ -23,6 +23,7 @@ void main() async {
   Hive.registerAdapter(LoanTypeAdapter());
   Hive.registerAdapter(GoalAdapter());
   await Hive.openBox<Transaction>('transactions');
+  await Hive.openBox<String>('deletedSmsIds'); // Blocklist for deleted SMS transactions
   final settingsBox = await Hive.openBox('settings');
   final userName = settingsBox.get('userName');
 
