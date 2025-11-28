@@ -245,7 +245,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${isExpense ? "-" : "+"}${NumberFormat.simpleCurrency(name: 'INR').format(tx.amount)}',
+                '${isExpense ? "-" : "+"}${provider.currencySymbol}${NumberFormat('#,##0').format(tx.amount)}',
                 style: TextStyle(
                   color: color,
                   fontSize: 16,

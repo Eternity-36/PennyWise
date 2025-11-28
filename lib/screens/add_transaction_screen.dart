@@ -120,17 +120,18 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           const SizedBox(width: 16),
         ],
       ),
-      body: Column(
-        children: [
-          const Spacer(),
-          // Amount Display
-          Text(
-            '₹$_amount',
-            style: Theme.of(context).textTheme.displayLarge?.copyWith(
-              color: _isExpense ? AppTheme.expense : AppTheme.income,
-              fontWeight: FontWeight.bold,
-            ),
-          ).animate().scale(duration: 300.ms, curve: Curves.easeOutBack),
+      body: Consumer<MoneyProvider>(
+        builder: (context, provider, child) => Column(
+          children: [
+            const Spacer(),
+            // Amount Display
+            Text(
+              '${provider.currencySymbol}$_amount',
+              style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                color: _isExpense ? AppTheme.expense : AppTheme.income,
+                fontWeight: FontWeight.bold,
+              ),
+            ).animate().scale(duration: 300.ms, curve: Curves.easeOutBack),
           const SizedBox(height: 32),
 
           // Note Input
@@ -202,6 +203,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           _buildKeypad(),
           const SizedBox(height: 32),
         ],
+        ),
       ),
     );
   }

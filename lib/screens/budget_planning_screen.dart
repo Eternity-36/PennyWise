@@ -366,7 +366,7 @@ class _BudgetPlanningScreenState extends State<BudgetPlanningScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '₹${amount.isEmpty ? "0" : amount}',
+                '${provider.currencySymbol}${amount.isEmpty ? "0" : amount}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 32,

@@ -101,29 +101,30 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              // Amount Display (without container)
-              Column(
-                children: [
-                  Text(
-                    _isExpense ? 'Expense' : 'Income',
-                    style: TextStyle(
-                      color: _isExpense ? AppTheme.expense : AppTheme.income,
-                      fontSize: 16,
+        child: Consumer<MoneyProvider>(
+          builder: (context, provider, child) => Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                // Amount Display (without container)
+                Column(
+                  children: [
+                    Text(
+                      _isExpense ? 'Expense' : 'Income',
+                      style: TextStyle(
+                        color: _isExpense ? AppTheme.expense : AppTheme.income,
+                        fontSize: 16,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '₹${_amount.isEmpty ? "0" : _amount}',
-                    style: const TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ).animate(key: ValueKey(_amount)).fadeIn(duration: 100.ms),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${provider.currencySymbol}${_amount.isEmpty ? "0" : _amount}',
+                      style: const TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ).animate(key: ValueKey(_amount)).fadeIn(duration: 100.ms),
                 ],
               ),
               const SizedBox(height: 16),
@@ -237,6 +238,7 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
               _buildKeypad(),
               const SizedBox(height: 12),
             ],
+            ),
           ),
         ),
       ),

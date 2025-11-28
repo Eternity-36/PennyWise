@@ -132,7 +132,7 @@ class ExportService {
     }
   }
 
-  Future<String?> exportToPDF(List<Transaction> transactions) async {
+  Future<String?> exportToPDF(List<Transaction> transactions, {String currencySymbol = '₹'}) async {
     try {
       // Request permission
       final hasPermission = await _requestStoragePermission();
@@ -142,7 +142,7 @@ class ExportService {
 
       final pdf = pw.Document();
       final currencyFormat = NumberFormat.currency(
-        symbol: '₹',
+        symbol: currencySymbol,
         decimalDigits: 2,
       );
 

@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../providers/money_provider.dart';
 import '../services/auth_service.dart';
 import '../utils/app_theme.dart';
+import '../utils/currencies.dart';
 import 'home_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -17,16 +18,38 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   final AuthService _authService = AuthService();
 
   int _currentPage = 0;
   bool _isAnimating = false;
+  CurrencyData _selectedCurrency = defaultCurrency;
+  List<CurrencyData> _filteredCurrencies = worldCurrencies;
 
   @override
   void dispose() {
     _pageController.dispose();
     _nameController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _filterCurrencies(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredCurrencies = worldCurrencies;
+      } else {
+        _filteredCurrencies = worldCurrencies.where((currency) {
+          final countryLower = currency.country.toLowerCase();
+          final codeLower = currency.code.toLowerCase();
+          final nameLower = currency.name.toLowerCase();
+          final queryLower = query.toLowerCase();
+          return countryLower.contains(queryLower) ||
+                 codeLower.contains(queryLower) ||
+                 nameLower.contains(queryLower);
+        }).toList();
+      }
+    });
   }
 
   void _nextPage() {
@@ -42,9 +65,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       final userCredential = await _authService.signInWithGoogle();
       if (userCredential != null && mounted) {
         final user = userCredential.user!;
+        
+        // Always use the newly selected currency from onboarding
+        // This overwrites any existing Firebase profile currency
         await _initializeAndNavigate(
           name: user.displayName ?? 'User',
-          currency: '₹',
+          currency: _selectedCurrency.symbol,
+          currencyCode: _selectedCurrency.code,
           isGuest: false,
           userId: user.uid,
           photoURL: user.photoURL,
@@ -70,13 +97,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final provider = Provider.of<MoneyProvider>(context, listen: false);
     final prevGuestId = provider.settingsBox.get('guestUserId');
     final prevGuestName = provider.settingsBox.get('guestUserName');
-    final prevGuestCurrency = provider.settingsBox.get('guestCurrency');
 
     if (prevGuestId != null) {
-      // RESTORE PREVIOUS GUEST SESSION
+      // RESTORE PREVIOUS GUEST SESSION but use newly selected currency
       await _initializeAndNavigate(
         name: prevGuestName ?? _nameController.text.trim(),
-        currency: prevGuestCurrency ?? '₹',
+        currency: _selectedCurrency.symbol,
+        currencyCode: _selectedCurrency.code,
         isGuest: true,
         userId: prevGuestId,
       );
@@ -92,7 +119,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
       await _initializeAndNavigate(
         name: _nameController.text.trim(),
-        currency: '₹',
+        currency: _selectedCurrency.symbol,
+        currencyCode: _selectedCurrency.code,
         isGuest: true,
         userId: const Uuid().v4(),
       );
@@ -102,6 +130,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _initializeAndNavigate({
     required String name,
     required String currency,
+    required String currencyCode,
     required bool isGuest,
     required String? userId,
     String? photoURL,
@@ -111,6 +140,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       await provider.initializeUser(
         name: name,
         currency: currency,
+        currencyCode: currencyCode,
         isGuest: isGuest,
         userId: userId,
         photoURL: photoURL,
@@ -169,12 +199,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 subtitle: 'Keep track of every penny you spend with ease.',
                 icon: Icons.account_balance_wallet_outlined,
               ),
-              _buildPage(
-                title: 'Smart\nAnalytics',
-                subtitle:
-                    'Visualize your spending habits with beautiful charts.',
-                icon: Icons.pie_chart_outline,
-              ),
+              _buildCurrencyPage(),
               _buildSetupPage(),
             ],
           ),
@@ -260,6 +285,245 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCurrencyPage() {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        children: [
+          const SizedBox(height: 60),
+          Icon(
+            Icons.currency_exchange,
+            size: 60,
+            color: AppTheme.primary,
+          ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
+          const SizedBox(height: 24),
+          const Text(
+            'Select Your\nCurrency',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              height: 1.2,
+            ),
+          ).animate().fadeIn().slideY(begin: 0.3, end: 0),
+          const SizedBox(height: 8),
+          Text(
+            'Choose the currency for tracking your expenses',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white.withValues(alpha: 0.7),
+            ),
+          ).animate().fadeIn(delay: 200.ms),
+          const SizedBox(height: 20),
+          
+          // Search Field
+          TextField(
+            controller: _searchController,
+            onChanged: _filterCurrencies,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Search country or currency...',
+              hintStyle: TextStyle(
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
+              filled: true,
+              fillColor: AppTheme.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              prefixIcon: const Icon(
+                Icons.search,
+                color: Colors.white70,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 14,
+              ),
+            ),
+          ).animate().fadeIn(delay: 300.ms),
+          
+          const SizedBox(height: 16),
+          
+          // Currency List
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: _filteredCurrencies.length,
+                itemBuilder: (context, index) {
+                  final currency = _filteredCurrencies[index];
+                  final isSelected = currency.code == _selectedCurrency.code;
+                  
+                  return InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedCurrency = currency;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppTheme.primary.withValues(alpha: 0.2)
+                            : Colors.transparent,
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.05),
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          // Flag
+                          Text(
+                            currency.flag,
+                            style: const TextStyle(fontSize: 24),
+                          ),
+                          const SizedBox(width: 12),
+                          // Country & Currency Name
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  currency.country,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                                Text(
+                                  currency.name,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Currency Code & Symbol
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                currency.code,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? AppTheme.primary
+                                      : Colors.white70,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                currency.symbol,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 8),
+                          // Checkmark
+                          if (isSelected)
+                            Icon(
+                              Icons.check_circle,
+                              color: AppTheme.primary,
+                              size: 20,
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ).animate().fadeIn(delay: 400.ms),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Selected Currency Display & Next Button
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppTheme.primary.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Text(
+                  _selectedCurrency.flag,
+                  style: const TextStyle(fontSize: 28),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${_selectedCurrency.symbol} ${_selectedCurrency.code}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        _selectedCurrency.name,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: _nextPage,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'NEXT',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 60), // Space for page indicators
         ],
       ),
     );

@@ -1849,7 +1849,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                             ),
                             child: Text(
                               NumberFormat.currency(
-                                symbol: '₹',
+                                symbol: Provider.of<MoneyProvider>(context, listen: false).currencySymbol,
                                 decimalDigits: 0,
                               ).format(widget.transaction.amount),
                               style: const TextStyle(
@@ -2138,7 +2138,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                               ),
                             ),
                             Text(
-                              '${NumberFormat.currency(symbol: '₹', decimalDigits: 0).format(widget.transaction.amount / (selectedContacts.length + 1))} each',
+                              '${NumberFormat.currency(symbol: Provider.of<MoneyProvider>(context, listen: false).currencySymbol, decimalDigits: 0).format(widget.transaction.amount / (selectedContacts.length + 1))} each',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 14,
@@ -2230,8 +2230,9 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   ) async {
     Navigator.pop(context); // Close the sheet
 
+    final currencySymbol = Provider.of<MoneyProvider>(context, listen: false).currencySymbol;
     final amountFormatted = NumberFormat.currency(
-      symbol: '₹',
+      symbol: currencySymbol,
       decimalDigits: 0,
     ).format(amountPerPerson);
 

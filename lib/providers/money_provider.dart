@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
 import '../models/transaction.dart';
 import '../models/budget.dart';
 import '../models/category.dart';
@@ -19,6 +20,7 @@ class MoneyProvider extends ChangeNotifier {
   String _userName = 'User';
   String _cardName = 'VISA';
   String _currencySymbol = '₹';
+  String _currencyCode = 'INR';
   String? _userId;
   String? _photoURL;
   Budget? _currentBudget;
@@ -29,6 +31,7 @@ class MoneyProvider extends ChangeNotifier {
   String get userName => _userName;
   String get cardName => _cardName;
   String get currencySymbol => _currencySymbol;
+  String get currencyCode => _currencyCode;
   String? get userId => _userId;
   String? get photoURL => _photoURL;
   Budget? get currentBudget => _currentBudget;
@@ -99,6 +102,7 @@ class MoneyProvider extends ChangeNotifier {
     _userName = _settingsBox.get('userName', defaultValue: 'User');
     _cardName = _settingsBox.get('cardName', defaultValue: 'VISA');
     _currencySymbol = _settingsBox.get('currencySymbol', defaultValue: '₹');
+    _currencyCode = _settingsBox.get('currencyCode', defaultValue: 'INR');
     _userId = _settingsBox.get('userId');
     _photoURL = _settingsBox.get('photoURL');
     _smsTrackingEnabled = _settingsBox.get(
@@ -598,18 +602,21 @@ class MoneyProvider extends ChangeNotifier {
   Future<void> initializeUser({
     required String name,
     required String currency,
+    required String currencyCode,
     required bool isGuest,
     required String? userId,
     String? photoURL,
   }) async {
     _userName = name;
     _currencySymbol = currency;
+    _currencyCode = currencyCode;
     _userId = userId;
     _photoURL = photoURL;
 
     // Persist to Hive (local settings)
     await _settingsBox.put('userName', name);
     await _settingsBox.put('currencySymbol', currency);
+    await _settingsBox.put('currencyCode', currencyCode);
     await _settingsBox.put('isGuest', isGuest);
     await _settingsBox.put('userId', userId);
     if (photoURL != null) {
@@ -623,11 +630,26 @@ class MoneyProvider extends ChangeNotifier {
       await _settingsBox.put('guestUserId', userId);
       await _settingsBox.put('guestUserName', name);
       await _settingsBox.put('guestCurrency', currency);
+      await _settingsBox.put('guestCurrencyCode', currencyCode);
     }
 
     // Switch Repository based on user type
     if (!isGuest && userId != null) {
       _repository = FirestoreTransactionRepository(userId);
+      
+      // Save user profile to Firebase
+      try {
+        await FirebaseFirestore.instance.collection('users').doc(userId).set({
+          'name': name,
+          'currencySymbol': currency,
+          'currencyCode': currencyCode,
+          'photoURL': photoURL,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('Failed to save user profile to Firebase: $e');
+      }
     } else {
       final box = Hive.box<Transaction>('transactions');
       _repository = HiveTransactionRepository(box);
@@ -665,13 +687,28 @@ class MoneyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Load user profile from Firebase (for returning users on new devices)
+  Future<Map<String, dynamic>?> loadUserProfileFromFirebase(String userId) async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      if (doc.exists) {
+        return doc.data();
+      }
+    } catch (e) {
+      debugPrint('Failed to load user profile from Firebase: $e');
+    }
+    return null;
+  }
+
   Future<void> logout() async {
     _userName = 'User';
     _currencySymbol = '₹';
+    _currencyCode = 'INR';
     _userId = null;
 
     await _settingsBox.delete('userName');
     await _settingsBox.delete('currencySymbol');
+    await _settingsBox.delete('currencyCode');
     await _settingsBox.delete('isGuest');
     await _settingsBox.delete('userId');
     await _settingsBox.delete('photoURL');

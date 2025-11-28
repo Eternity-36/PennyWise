@@ -91,7 +91,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (format == 'CSV') {
         filePath = await exportService.exportToCSV(provider.transactions);
       } else if (format == 'PDF') {
-        filePath = await exportService.exportToPDF(provider.transactions);
+        filePath = await exportService.exportToPDF(
+          provider.transactions,
+          currencySymbol: provider.currencySymbol,
+        );
       }
 
       if (mounted) {
