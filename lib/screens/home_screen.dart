@@ -1,5 +1,4 @@
 import 'package:flutter/services.dart';
-import 'transaction_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -11,7 +10,9 @@ import '../widgets/custom_bottom_nav_bar.dart';
 import 'add_transaction_screen.dart';
 import 'analytics_screen.dart';
 import 'advance_screen.dart';
+import 'net_worth_screen.dart';
 import 'settings_screen.dart';
+import 'all_transactions_screen.dart';
 import '../utils/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -142,10 +143,10 @@ class _HomeScreenState extends State<HomeScreen> {
             height: 300,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppTheme.primary.withOpacity(0.05),
+              color: AppTheme.primary.withValues(alpha: 0.05),
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.primary.withOpacity(0.1),
+                  color: AppTheme.primary.withValues(alpha: 0.1),
                   blurRadius: 100,
                   spreadRadius: 50,
                 ),
@@ -182,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Text(
                             'Welcome Back,',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.6),
+                              color: Colors.white.withValues(alpha: 0.6),
                               fontSize: 14,
                               letterSpacing: 0.5,
                             ),
@@ -206,17 +207,23 @@ class _HomeScreenState extends State<HomeScreen> {
                             PageRouteBuilder(
                               opaque: false,
                               barrierDismissible: true,
-                              barrierColor: Colors.black.withOpacity(0.5),
+                              barrierColor: Colors.black.withValues(alpha: 0.5),
                               transitionDuration: const Duration(
                                 milliseconds: 400,
                               ),
                               reverseTransitionDuration: const Duration(
                                 milliseconds: 300,
                               ),
-                              pageBuilder: (context, _, __) =>
-                                  const ProfileDialog(),
+                              pageBuilder:
+                                  (context, animation, secondaryAnimation) =>
+                                      const ProfileDialog(),
                               transitionsBuilder:
-                                  (context, animation, _, child) {
+                                  (
+                                    context,
+                                    animation,
+                                    secondaryAnimation,
+                                    child,
+                                  ) {
                                     return FadeTransition(
                                       opacity: animation,
                                       child: child,
@@ -269,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     'Quick Actions',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
@@ -326,23 +333,24 @@ class _HomeScreenState extends State<HomeScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const AnalyticsScreen(),
+                              builder: (context) =>
+                                  const AllTransactionsScreen(),
                             ),
                           );
                         },
                       ),
                       _buildQuickAction(
                         context,
-                        icon: Icons.more_horiz_rounded,
-                        label: 'More',
-                        color: Colors.white,
+                        icon: Icons.show_chart_rounded,
+                        label: 'Net Worth',
+                        color: Colors.cyan,
                         delay: 800,
-                        heroTag: 'hero_action_more',
+                        heroTag: 'hero_action_net_worth',
                         onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('More features coming soon!'),
-                              duration: Duration(seconds: 2),
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NetWorthScreen(),
                             ),
                           );
                         },
@@ -353,31 +361,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 8),
 
                   // Recent Transactions
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Recent Transactions',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          // Navigate to full history
-                        },
-                        child: Text(
-                          'View All',
-                          style: TextStyle(
-                            color: AppTheme.primary,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    'Recent Transactions',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
                   ).animate().fadeIn(delay: 900.ms),
                   const SizedBox(height: 16),
 
