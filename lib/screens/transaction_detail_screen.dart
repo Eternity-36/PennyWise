@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../models/transaction.dart';
+import '../models/category.dart';
 import '../providers/money_provider.dart';
 
 class TransactionDetailScreen extends StatefulWidget {
@@ -149,44 +150,127 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                     const SizedBox(height: 16),
 
                     // Category Pill with Edit Icon
-                    GestureDetector(
-                      onTap: () {
-                        // TODO: Show category picker
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.category_outlined, // Placeholder icon
-                              color: Colors.redAccent,
-                              size: 16,
+                    Consumer<MoneyProvider>(
+                      builder: (context, provider, child) {
+                        final categoryObj = provider.categories.firstWhere(
+                          (c) => c.name == _category,
+                          orElse: () => Category(
+                            id: 'unknown',
+                            name: _category,
+                            iconCode: Icons.category.codePoint,
+                            colorValue: Colors.grey.value,
+                            isCustom: false,
+                          ),
+                        );
+
+                        return GestureDetector(
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: const Color(0xFF1E1C1C),
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(20),
+                                ),
+                              ),
+                              builder: (context) => Container(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text(
+                                      'Select Category',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Expanded(
+                                      child: ListView.builder(
+                                        itemCount: provider.categories.length,
+                                        itemBuilder: (context, index) {
+                                          final cat =
+                                              provider.categories[index];
+                                          return ListTile(
+                                            leading: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: cat.color.withValues(
+                                                  alpha: 0.2,
+                                                ),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                cat.icon,
+                                                color: cat.color,
+                                                size: 20,
+                                              ),
+                                            ),
+                                            title: Text(
+                                              cat.name,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                            onTap: () {
+                                              setState(() {
+                                                _category = cat.name;
+                                                _updateTransaction();
+                                              });
+                                              Navigator.pop(context);
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _category,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
+                            decoration: BoxDecoration(
+                              color: categoryObj.color.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: categoryObj.color.withValues(alpha: 0.3),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.edit,
-                              color: Colors.white54,
-                              size: 14,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  categoryObj.icon,
+                                  color: categoryObj.color,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _category,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Icon(
+                                  Icons.edit,
+                                  color: categoryObj.color.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                  size: 14,
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 40),

@@ -21,16 +21,6 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
   late String _selectedCategory;
   final TextEditingController _notesController = TextEditingController();
 
-  final List<String> _categories = [
-    'Food',
-    'Transport',
-    'Shopping',
-    'Bills',
-    'Entertainment',
-    'Health',
-    'Other',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -161,40 +151,64 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
               // Category Selector
               SizedBox(
                 height: 50,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _categories.length,
-                  itemBuilder: (context, index) {
-                    final category = _categories[index];
-                    final isSelected = category == _selectedCategory;
-                    return GestureDetector(
-                      onTap: () {
-                        _vibrate();
-                        setState(() {
-                          _selectedCategory = category;
-                        });
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 12),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppTheme.primary
-                              : AppTheme.surface,
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        child: Text(
-                          category,
-                          style: TextStyle(
-                            color: isSelected ? Colors.black : Colors.white,
-                            fontWeight: FontWeight.w600,
+                child: Consumer<MoneyProvider>(
+                  builder: (context, provider, child) {
+                    final categories = provider.categories;
+                    return ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: categories.length,
+                      itemBuilder: (context, index) {
+                        final category = categories[index];
+                        final isSelected = category.name == _selectedCategory;
+                        return GestureDetector(
+                          onTap: () {
+                            _vibrate();
+                            setState(() {
+                              _selectedCategory = category.name;
+                            });
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? category.color
+                                  : AppTheme.surface,
+                              borderRadius: BorderRadius.circular(25),
+                              border: Border.all(
+                                color: isSelected
+                                    ? Colors.transparent
+                                    : category.color.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  category.icon,
+                                  size: 18,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : category.color,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  category.name,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
-                    ).animate(delay: (50 * index).ms).fadeIn().scale();
+                        ).animate(delay: (50 * index).ms).fadeIn().scale();
+                      },
+                    );
                   },
                 ),
               ),

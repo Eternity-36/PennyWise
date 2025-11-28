@@ -16,12 +16,16 @@ class Budget extends HiveObject {
   @HiveField(3)
   String accountId;
 
+  @HiveField(4)
+  Map<String, double> categoryLimits;
+
   Budget({
     required this.monthlyLimit,
     required this.month,
     required this.year,
     this.accountId = 'default',
-  });
+    Map<String, double>? categoryLimits,
+  }) : categoryLimits = categoryLimits ?? {};
 
   Map<String, dynamic> toJson() {
     return {
@@ -29,6 +33,7 @@ class Budget extends HiveObject {
       'month': month,
       'year': year,
       'accountId': accountId,
+      'categoryLimits': categoryLimits,
     };
   }
 
@@ -38,6 +43,11 @@ class Budget extends HiveObject {
       month: json['month'],
       year: json['year'],
       accountId: json['accountId'] ?? 'default',
+      categoryLimits:
+          (json['categoryLimits'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, (v as num).toDouble()),
+          ) ??
+          {},
     );
   }
 }

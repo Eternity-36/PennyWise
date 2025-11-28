@@ -80,243 +80,272 @@ class _BalanceCardState extends State<BalanceCard> {
   }
 
   Widget _buildMainCard(BuildContext context, MoneyProvider provider) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF1A1F38), // Dark Blue
-            const Color(0xFF2D3459), // Lighter Blue
-            AppTheme.primary.withValues(alpha: 0.6),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          stops: const [0.0, 0.4, 1.0],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Top Row: Chip and Visa Logo
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildChip(),
-              GestureDetector(
-                onTap: () => _showCardNameDialog(context, provider),
-                child: Row(
-                  children: [
-                    Text(
-                      provider.cardName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        fontStyle: FontStyle.italic,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        Icons.edit,
-                        color: Colors.white.withValues(alpha: 0.6),
-                        size: 20,
-                      ),
-                    ),
-                  ],
-                ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFF2D3459).withValues(alpha: 0.4),
+                const Color(0xFF1A1F38).withValues(alpha: 0.6),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.15),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 25,
+                spreadRadius: -5,
+                offset: const Offset(0, 15),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-
-          // Balance Section
-          Column(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Total Balance',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 14,
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                    NumberFormat.currency(
-                      symbol: provider.currencySymbol,
-                      decimalDigits: 0,
-                    ).format(provider.totalBalance),
-                    style: const TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 1.0,
+              // Top Row: Chip and Visa Logo
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildChip(),
+                  GestureDetector(
+                    onTap: () => _showCardNameDialog(context, provider),
+                    child: Row(
+                      children: [
+                        Text(
+                          provider.cardName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            fontStyle: FontStyle.italic,
+                            letterSpacing: 1.5,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black26,
+                                offset: Offset(0, 2),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.edit,
+                            color: Colors.white.withValues(alpha: 0.6),
+                            size: 20,
+                          ),
+                        ),
+                      ],
                     ),
-                  )
-                  .animate(key: ValueKey(provider.totalBalance))
-                  .fadeIn(duration: 200.ms),
-            ],
-          ),
-          const SizedBox(height: 10),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
 
-          // Cardholder Section
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+              // Balance Section
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'CARD HOLDER',
+                    'Total Balance',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 14,
+                      letterSpacing: 1.0,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    provider.userName.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
+                        NumberFormat.currency(
+                          symbol: provider.currencySymbol,
+                          decimalDigits: 0,
+                        ).format(provider.totalBalance),
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 1.0,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black26,
+                              offset: Offset(0, 2),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                      )
+                      .animate(key: ValueKey(provider.totalBalance))
+                      .fadeIn(duration: 200.ms),
                 ],
               ),
-              // Mini Stats for Income/Expense
-              Row(
-                children: [
-                  _buildMiniStat(
-                    context,
-                    provider.totalIncome,
-                    AppTheme.income,
-                    Icons.arrow_downward,
-                    provider.currencySymbol,
-                  ),
-                  const SizedBox(width: 12),
-                  _buildMiniStat(
-                    context,
-                    provider.totalExpense,
-                    AppTheme.expense,
-                    Icons.arrow_upward,
-                    provider.currencySymbol,
-                  ),
-                ],
-              ),
-            ],
-          ),
+              const SizedBox(height: 10),
 
-          // Budget Progress (if set)
-          if (provider.currentBudget != null &&
-              provider.currentBudget!.monthlyLimit > 0) ...[
-            const SizedBox(height: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // Cardholder Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'CARD HOLDER',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        provider.userName.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.0,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black26,
+                              offset: Offset(0, 1),
+                              blurRadius: 2,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Mini Stats for Income/Expense
+                  Row(
+                    children: [
+                      _buildMiniStat(
+                        context,
+                        provider.totalIncome,
+                        AppTheme.income,
+                        Icons.arrow_downward,
+                        provider.currencySymbol,
+                      ),
+                      const SizedBox(width: 12),
+                      _buildMiniStat(
+                        context,
+                        provider.totalExpense,
+                        AppTheme.expense,
+                        Icons.arrow_upward,
+                        provider.currencySymbol,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              // Budget Progress (if set)
+              if (provider.currentBudget != null &&
+                  provider.currentBudget!.monthlyLimit > 0) ...[
+                const SizedBox(height: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Monthly Budget',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.7),
+                            fontSize: 12,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => _showBudgetDialog(context, provider),
+                          child: Icon(
+                            Icons.edit,
+                            size: 16,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: provider.budgetProgress,
+                        backgroundColor: Colors.white.withValues(alpha: 0.1),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          provider.budgetProgress > 0.8
+                              ? AppTheme.expense
+                              : AppTheme.income,
+                        ),
+                        minHeight: 8,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
                     Text(
-                      'Monthly Budget',
+                      '${provider.currencySymbol}${NumberFormat.compact().format(provider.monthlySpent)} / ${provider.currencySymbol}${NumberFormat.compact().format(provider.currentBudget!.monthlyLimit)}',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.7),
                         fontSize: 12,
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => _showBudgetDialog(context, provider),
-                      child: Icon(
-                        Icons.edit,
-                        size: 16,
-                        color: Colors.white.withValues(alpha: 0.7),
-                      ),
-                    ),
                   ],
                 ),
+              ] else ...[
                 const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: provider.budgetProgress,
-                    backgroundColor: Colors.white.withValues(alpha: 0.2),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      provider.budgetProgress > 0.8
-                          ? AppTheme.expense
-                          : AppTheme.income,
+                Center(
+                  child: GestureDetector(
+                    onTap: () => _showBudgetDialog(context, provider),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.add_circle_outline,
+                            size: 16,
+                            color: Colors.white.withValues(alpha: 0.9),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Set Monthly Budget',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    minHeight: 8,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${provider.currencySymbol}${NumberFormat.compact().format(provider.monthlySpent)} / ${provider.currencySymbol}${NumberFormat.compact().format(provider.currentBudget!.monthlyLimit)}',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 12,
                   ),
                 ),
               ],
-            ),
-          ] else ...[
-            const SizedBox(height: 8),
-            Center(
-              child: GestureDetector(
-                onTap: () => _showBudgetDialog(context, provider),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: AppTheme.primary.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.add_circle_outline,
-                        size: 16,
-                        color: AppTheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Set Monthly Budget',
-                        style: TextStyle(
-                          color: AppTheme.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
+            ],
+          ),
+        ),
       ),
     ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.3, end: 0);
   }

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/transaction.dart';
 import '../models/budget.dart';
+import '../models/category.dart';
+import '../models/loan.dart';
+import '../models/goal.dart';
 import '../repositories/transaction_repository.dart';
 import '../repositories/hive_transaction_repository.dart';
 import '../repositories/firestore_transaction_repository.dart';
@@ -89,9 +92,184 @@ class MoneyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  late Box<Category> _categoryBox;
+  List<Category> _categories = [];
+  List<Category> get categories => _categories;
+
+  late Box<Loan> _loanBox;
+  List<Loan> _loans = [];
+  List<Loan> get loans => _loans;
+
+  late Box<Goal> _goalBox;
+  List<Goal> _goals = [];
+  List<Goal> get goals => _goals;
+
   Future<void> _initBudget() async {
     _budgetBox = await Hive.openBox<Budget>('budgets');
+    _categoryBox = await Hive.openBox<Category>('categories');
+    _loanBox = await Hive.openBox<Loan>('loans');
+    _goalBox = await Hive.openBox<Goal>('goals');
+    await _initCategories();
     _loadCurrentBudget();
+    _loadLoans();
+    _loadGoals();
+  }
+
+  void _loadLoans() {
+    _loans = _loanBox.values.toList();
+    notifyListeners();
+  }
+
+  void _loadGoals() {
+    _goals = _goalBox.values.toList();
+    notifyListeners();
+  }
+
+  Future<void> _initCategories() async {
+    if (_categoryBox.isEmpty) {
+      final defaultCategories = [
+        Category(
+          id: 'food',
+          name: 'Food',
+          iconCode: Icons.fastfood.codePoint,
+          colorValue: Colors.orange.toARGB32(),
+          isCustom: false,
+        ),
+        Category(
+          id: 'transport',
+          name: 'Transport',
+          iconCode: Icons.directions_bus.codePoint,
+          colorValue: Colors.blue.toARGB32(),
+          isCustom: false,
+        ),
+        Category(
+          id: 'shopping',
+          name: 'Shopping',
+          iconCode: Icons.shopping_bag.codePoint,
+          colorValue: Colors.purple.toARGB32(),
+          isCustom: false,
+        ),
+        Category(
+          id: 'entertainment',
+          name: 'Entertainment',
+          iconCode: Icons.movie.codePoint,
+          colorValue: Colors.red.toARGB32(),
+          isCustom: false,
+        ),
+        Category(
+          id: 'health',
+          name: 'Health',
+          iconCode: Icons.local_hospital.codePoint,
+          colorValue: Colors.green.toARGB32(),
+          isCustom: false,
+        ),
+        Category(
+          id: 'education',
+          name: 'Education',
+          iconCode: Icons.school.codePoint,
+          colorValue: Colors.yellow.shade700.toARGB32(),
+          isCustom: false,
+        ),
+        Category(
+          id: 'bills',
+          name: 'Bills',
+          iconCode: Icons.receipt.codePoint,
+          colorValue: Colors.grey.toARGB32(),
+          isCustom: false,
+        ),
+        Category(
+          id: 'salary',
+          name: 'Salary',
+          iconCode: Icons.attach_money.codePoint,
+          colorValue: Colors.green.shade800.toARGB32(),
+          isCustom: false,
+        ),
+        Category(
+          id: 'other',
+          name: 'Other',
+          iconCode: Icons.category.codePoint,
+          colorValue: Colors.grey.shade400.toARGB32(),
+          isCustom: false,
+        ),
+      ];
+      await _categoryBox.addAll(defaultCategories);
+    }
+    _categories = _categoryBox.values.toList();
+    notifyListeners();
+  }
+
+  Future<void> addCategory(String name, IconData icon, Color color) async {
+    final newCategory = Category(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: name,
+      iconCode: icon.codePoint,
+      colorValue: color.toARGB32(),
+      isCustom: true,
+    );
+    await _categoryBox.add(newCategory);
+    _categories = _categoryBox.values.toList();
+    notifyListeners();
+  }
+
+  Future<void> deleteCategory(String id) async {
+    final categoryToDelete = _categoryBox.values.firstWhere((c) => c.id == id);
+    await categoryToDelete.delete();
+    _categories = _categoryBox.values.toList();
+    notifyListeners();
+  }
+
+  Future<void> addLoan(Loan loan) async {
+    await _loanBox.add(loan);
+    _loadLoans();
+  }
+
+  Future<void> updateLoan(Loan loan) async {
+    await loan.save();
+    _loadLoans();
+  }
+
+  Future<void> deleteLoan(String id) async {
+    final loanToDelete = _loanBox.values.firstWhere((l) => l.id == id);
+    await loanToDelete.delete();
+    _loadLoans();
+  }
+
+  double get totalLent {
+    return _loans
+        .where((l) => l.type == LoanType.given)
+        .fold(0.0, (sum, item) => sum + item.remainingAmount);
+  }
+
+  double get totalBorrowed {
+    return _loans
+        .where((l) => l.type == LoanType.taken)
+        .fold(0.0, (sum, item) => sum + item.remainingAmount);
+  }
+
+  Future<void> addGoal(Goal goal) async {
+    await _goalBox.add(goal);
+    _loadGoals();
+  }
+
+  Future<void> updateGoal(Goal goal) async {
+    await goal.save();
+    _loadGoals();
+  }
+
+  Future<void> deleteGoal(String id) async {
+    final goalToDelete = _goalBox.values.firstWhere((g) => g.id == id);
+    await goalToDelete.delete();
+    _loadGoals();
+  }
+
+  Future<void> addSavingsToGoal(String id, double amount) async {
+    final goal = _goalBox.values.firstWhere((g) => g.id == id);
+    goal.savedAmount += amount;
+    if (goal.savedAmount > goal.targetAmount) {
+      goal.savedAmount = goal.targetAmount;
+    }
+    await goal.save();
+    _loadGoals();
   }
 
   void _loadCurrentBudget() {
@@ -129,17 +307,50 @@ class MoneyProvider extends ChangeNotifier {
       final budget = existing.first;
       budget.monthlyLimit = limit;
       await budget.save();
+      _currentBudget = budget;
     } else {
-      await _budgetBox.add(
-        Budget(
-          monthlyLimit: limit,
-          month: now.month,
-          year: now.year,
-          accountId: _userId!,
-        ),
+      final newBudget = Budget(
+        monthlyLimit: limit,
+        month: now.month,
+        year: now.year,
+        accountId: _userId!,
       );
+      await _budgetBox.add(newBudget);
+      _currentBudget = newBudget;
     }
-    _loadCurrentBudget();
+    notifyListeners();
+  }
+
+  Future<void> setCategoryLimit(String categoryName, double limit) async {
+    if (_userId == null) return;
+
+    if (_currentBudget == null) {
+      await setBudget(0);
+    }
+
+    if (_currentBudget != null) {
+      _currentBudget!.categoryLimits[categoryName] = limit;
+      await _currentBudget!.save();
+      notifyListeners();
+    }
+  }
+
+  double getCategoryLimit(String categoryName) {
+    return _currentBudget?.categoryLimits[categoryName] ?? 0;
+  }
+
+  double getCategorySpent(String categoryName) {
+    final now = DateTime.now();
+    return _transactions
+        .where(
+          (t) =>
+              !t.isExcluded &&
+              t.isExpense &&
+              t.category == categoryName &&
+              t.date.month == now.month &&
+              t.date.year == now.year,
+        )
+        .fold(0.0, (sum, item) => sum + item.amount);
   }
 
   double get budgetProgress {
@@ -153,8 +364,8 @@ class MoneyProvider extends ChangeNotifier {
               t.date.month == now.month &&
               t.date.year == now.year,
         )
-        .fold(0.0, (sum, t) => sum + t.amount);
-    return (monthExpenses / _currentBudget!.monthlyLimit).clamp(0.0, 1.0);
+        .fold(0.0, (sum, item) => sum + item.amount);
+    return monthExpenses / _currentBudget!.monthlyLimit;
   }
 
   double get monthlySpent {
@@ -167,7 +378,7 @@ class MoneyProvider extends ChangeNotifier {
               t.date.month == now.month &&
               t.date.year == now.year,
         )
-        .fold(0.0, (sum, t) => sum + t.amount);
+        .fold(0.0, (sum, item) => sum + item.amount);
   }
 
   Future<void> setUserName(String name) async {

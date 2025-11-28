@@ -3,6 +3,11 @@ import 'package:provider/provider.dart';
 import '../providers/money_provider.dart';
 import '../utils/app_theme.dart';
 import 'sms_tracking_screen.dart';
+import 'net_worth_screen.dart';
+import 'category_management_screen.dart';
+import 'budget_planning_screen.dart';
+import 'loans_screen.dart';
+import 'goals_screen.dart';
 
 class AdvanceScreen extends StatelessWidget {
   const AdvanceScreen({super.key});
@@ -45,6 +50,61 @@ class AdvanceScreen extends StatelessWidget {
                   builder: (context) => const SmsTrackingScreen(),
                 ),
               ),
+              isEnabled: Provider.of<MoneyProvider>(context).smsTrackingEnabled,
+            ),
+            _buildFeatureTile(
+              context,
+              'Net Worth Analysis',
+              'Visualize your financial growth over time',
+              Icons.show_chart_rounded,
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const NetWorthScreen()),
+              ),
+            ),
+            _buildFeatureTile(
+              context,
+              'Category Management',
+              'Create and customize transaction categories',
+              Icons.category_outlined,
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CategoryManagementScreen(),
+                ),
+              ),
+            ),
+            _buildFeatureTile(
+              context,
+              'Budget Planning',
+              'Set monthly limits for categories',
+              Icons.account_balance_wallet_outlined,
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const BudgetPlanningScreen(),
+                ),
+              ),
+            ),
+            _buildFeatureTile(
+              context,
+              'Loans Management',
+              'Track money lent and borrowed',
+              Icons.handshake_outlined,
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LoansScreen()),
+              ),
+            ),
+            _buildFeatureTile(
+              context,
+              'Financial Goals',
+              'Set and track savings goals',
+              Icons.flag_outlined,
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const GoalsScreen()),
+              ),
             ),
             // Add more advanced features here in the future
           ],
@@ -58,11 +118,9 @@ class AdvanceScreen extends StatelessWidget {
     String title,
     String subtitle,
     IconData icon,
-    VoidCallback onTap,
-  ) {
-    final provider = Provider.of<MoneyProvider>(context);
-    final isEnabled = provider.smsTrackingEnabled;
-
+    VoidCallback onTap, {
+    bool? isEnabled,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -72,7 +130,7 @@ class AdvanceScreen extends StatelessWidget {
           color: AppTheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isEnabled
+            color: isEnabled == true
                 ? AppTheme.primary.withValues(alpha: 0.3)
                 : Colors.white.withValues(alpha: 0.05),
           ),
@@ -89,14 +147,14 @@ class AdvanceScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isEnabled
+                color: isEnabled == true
                     ? AppTheme.primary.withValues(alpha: 0.1)
                     : Colors.white.withValues(alpha: 0.05),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
-                color: isEnabled ? AppTheme.primary : Colors.white54,
+                color: isEnabled == true ? AppTheme.primary : Colors.white54,
                 size: 24,
               ),
             ),
@@ -121,27 +179,29 @@ class AdvanceScreen extends StatelessWidget {
                       fontSize: 12,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isEnabled
-                          ? AppTheme.income.withValues(alpha: 0.1)
-                          : AppTheme.expense.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      isEnabled ? 'Active' : 'Inactive',
-                      style: TextStyle(
-                        color: isEnabled ? AppTheme.income : AppTheme.expense,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                  if (isEnabled != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isEnabled
+                            ? AppTheme.income.withValues(alpha: 0.1)
+                            : AppTheme.expense.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        isEnabled ? 'Active' : 'Inactive',
+                        style: TextStyle(
+                          color: isEnabled ? AppTheme.income : AppTheme.expense,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
