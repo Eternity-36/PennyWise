@@ -24,6 +24,7 @@ class MoneyProvider extends ChangeNotifier {
   Budget? _currentBudget;
   List<Transaction> _transactions = [];
   bool _smsTrackingEnabled = false;
+  bool _biometricLockEnabled = false;
 
   String get userName => _userName;
   String get cardName => _cardName;
@@ -34,6 +35,7 @@ class MoneyProvider extends ChangeNotifier {
   Box get settingsBox => _settingsBox;
   List<Transaction> get transactions => _transactions;
   bool get smsTrackingEnabled => _smsTrackingEnabled;
+  bool get biometricLockEnabled => _biometricLockEnabled;
 
   MoneyProvider() {
     _initRepository();
@@ -75,12 +77,12 @@ class MoneyProvider extends ChangeNotifier {
       }
       
       // Add local SMS transactions (only those with smsBody)
+      // These take priority for SMS-specific fields like receiptPath
       for (final t in localTransactions) {
         if (t.smsBody != null && t.smsBody!.isNotEmpty) {
-          // SMS transaction - add if not already present
-          if (!transactionMap.containsKey(t.id)) {
-            transactionMap[t.id] = t;
-          }
+          // SMS transaction - always use local version as it has user edits
+          // (receiptPath, notes, category changes, etc.)
+          transactionMap[t.id] = t;
         }
       }
       
@@ -103,6 +105,10 @@ class MoneyProvider extends ChangeNotifier {
       'smsTrackingEnabled',
       defaultValue: false,
     );
+    _biometricLockEnabled = _settingsBox.get(
+      'biometricLockEnabled',
+      defaultValue: false,
+    );
     if (_smsTrackingEnabled) {
       syncSmsTransactions();
     }
@@ -112,6 +118,12 @@ class MoneyProvider extends ChangeNotifier {
   Future<void> setSmsTracking(bool enabled) async {
     _smsTrackingEnabled = enabled;
     await _settingsBox.put('smsTrackingEnabled', enabled);
+    notifyListeners();
+  }
+
+  Future<void> setBiometricLock(bool enabled) async {
+    _biometricLockEnabled = enabled;
+    await _settingsBox.put('biometricLockEnabled', enabled);
     notifyListeners();
   }
 
@@ -424,56 +436,52 @@ class MoneyProvider extends ChangeNotifier {
 
     // Get blocklisted IDs (deleted SMS transactions)
     final blockedIds = _deletedSmsBox.values.toSet();
+    
+    // Get existing local transactions to preserve user edits
+    final existingLocalTransactions = await _localRepository.getTransactions();
+    final existingLocalMap = <String, Transaction>{};
+    for (final t in existingLocalTransactions) {
+      existingLocalMap[t.id] = t;
+    }
+    
     print('========== SMS SYNC ==========');
     print('SMS Blocklist: ${blockedIds.length} IDs blocked');
-    print('Blocked IDs: $blockedIds');
+    print('Existing local transactions: ${existingLocalMap.length}');
 
     int addedCount = 0;
     int blockedCount = 0;
+    int skippedCount = 0;
+    
     for (final transaction in smsTransactions) {
       // Skip if this transaction was previously deleted by user
       if (blockedIds.contains(transaction.id)) {
         blockedCount++;
-        print('BLOCKED: ${transaction.id} - ${transaction.title} (Rs.${transaction.amount})');
         continue;
       }
 
-      // Check for duplicates based on ID (Ref No)
+      // Check if this transaction already exists in local storage
+      final existingLocal = existingLocalMap[transaction.id];
+      
+      if (existingLocal != null) {
+        // Transaction already exists in local storage
+        // Skip to preserve user edits (receiptPath, notes, category, etc.)
+        skippedCount++;
+        continue;
+      }
+
+      // Check if it exists in the in-memory list (might be from Firebase)
       final index = _transactions.indexWhere((t) => t.id == transaction.id);
 
       if (index == -1) {
         // New transaction - save to LOCAL storage only (not Firebase)
         await _localRepository.addTransaction(transaction);
         addedCount++;
-      } else {
-        // Existing transaction, check if we need to update SMS details
-        final existing = _transactions[index];
-        if (existing.smsBody == null && transaction.smsBody != null) {
-          // Create updated transaction preserving user edits (title, category)
-          final updated = Transaction(
-            id: existing.id,
-            title: existing.title,
-            amount: existing.amount,
-            date: existing.date,
-            isExpense: existing.isExpense,
-            category: existing.category,
-            accountId: existing.accountId,
-            userId: existing.userId,
-            smsBody: transaction.smsBody,
-            referenceNumber: transaction.referenceNumber,
-            bankName: transaction.bankName,
-            accountLast4: transaction.accountLast4,
-            isExcluded: existing.isExcluded,
-          );
-
-          // Update in LOCAL storage only (not Firebase)
-          await _localRepository.updateTransaction(updated);
-          addedCount++; // Count as update to trigger reload
-        }
       }
+      // If it exists in memory but not in local storage, don't add it
+      // (it's probably a Firebase transaction, not an SMS one)
     }
 
-    print('SMS Sync Summary: $addedCount added, $blockedCount blocked');
+    print('SMS Sync Summary: $addedCount added, $blockedCount blocked, $skippedCount preserved');
     print('===============================');
     
     if (addedCount > 0) {
@@ -572,7 +580,18 @@ class MoneyProvider extends ChangeNotifier {
   }
 
   Future<void> updateTransaction(Transaction newTransaction) async {
-    await _repository.updateTransaction(newTransaction);
+    // Check if it's an SMS transaction - use local repository for SMS
+    final isSmsTransaction = newTransaction.smsBody != null && 
+                             newTransaction.smsBody!.isNotEmpty;
+    
+    if (isSmsTransaction) {
+      // SMS transactions are stored locally only
+      await _localRepository.updateTransaction(newTransaction);
+    } else {
+      // Non-SMS transactions use Firebase (or main repository)
+      await _repository.updateTransaction(newTransaction);
+    }
+    
     await _loadTransactions();
   }
 

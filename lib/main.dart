@@ -9,6 +9,7 @@ import 'models/loan.dart';
 import 'models/goal.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/lock_screen.dart';
 import 'utils/app_theme.dart';
 import 'providers/money_provider.dart';
 
@@ -43,14 +44,26 @@ class PennyWiseApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'PennyWise',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      initialRoute: initialRoute,
-      routes: {
-        '/onboarding': (context) => const OnboardingScreen(),
-        '/home': (context) => const HomeScreen(),
+    return Consumer<MoneyProvider>(
+      builder: (context, provider, child) {
+        return MaterialApp(
+          title: 'PennyWise',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.darkTheme,
+          home: LockScreen(
+            isEnabled: provider.biometricLockEnabled && initialRoute == '/home',
+            child: initialRoute == '/home' 
+                ? const HomeScreen() 
+                : const OnboardingScreen(),
+          ),
+          routes: {
+            '/onboarding': (context) => const OnboardingScreen(),
+            '/home': (context) => LockScreen(
+              isEnabled: provider.biometricLockEnabled,
+              child: const HomeScreen(),
+            ),
+          },
+        );
       },
     );
   }

@@ -1,4 +1,6 @@
 import 'dart:ui';
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -6,6 +8,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/transaction.dart';
 import '../models/category.dart';
 import '../providers/money_provider.dart';
@@ -29,6 +33,9 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   late String _accountLast4;
   late bool _isExcluded;
   late String? _notes;
+  late String? _receiptPath;
+  late String? _receiptBase64;
+  bool _isSyncing = false;
 
   @override
   void initState() {
@@ -40,6 +47,55 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     _accountLast4 = widget.transaction.accountLast4 ?? 'XXXX';
     _isExcluded = widget.transaction.isExcluded;
     _notes = widget.transaction.notes;
+    _receiptPath = widget.transaction.receiptPath;
+    _receiptBase64 = widget.transaction.receiptBase64;
+    
+    // For non-SMS transactions, restore receipt from base64 if needed
+    _restoreReceiptFromBase64();
+  }
+
+  // Restore receipt image from base64 if local file doesn't exist
+  Future<void> _restoreReceiptFromBase64() async {
+    final isSmsTransaction = widget.transaction.smsBody != null && 
+                             widget.transaction.smsBody!.isNotEmpty;
+    
+    // Only for non-SMS transactions with base64 but missing local file
+    if (!isSmsTransaction && 
+        _receiptBase64 != null && 
+        _receiptBase64!.isNotEmpty) {
+      
+      bool needsRestore = _receiptPath == null || _receiptPath!.isEmpty;
+      
+      if (!needsRestore && _receiptPath != null) {
+        final file = File(_receiptPath!);
+        needsRestore = !await file.exists();
+      }
+      
+      if (needsRestore) {
+        try {
+          final appDir = await getApplicationDocumentsDirectory();
+          final receiptsDir = Directory('${appDir.path}/receipts');
+          if (!await receiptsDir.exists()) {
+            await receiptsDir.create(recursive: true);
+          }
+          
+          final fileName = 'receipt_${widget.transaction.id}_restored.jpg';
+          final savedPath = '${receiptsDir.path}/$fileName';
+          
+          // Decode base64 and save to file
+          final bytes = base64Decode(_receiptBase64!);
+          await File(savedPath).writeAsBytes(bytes);
+          
+          if (mounted) {
+            setState(() {
+              _receiptPath = savedPath;
+            });
+          }
+        } catch (e) {
+          debugPrint('Failed to restore receipt from base64: $e');
+        }
+      }
+    }
   }
 
   void _updateTransaction() {
@@ -59,6 +115,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       accountLast4: widget.transaction.accountLast4,
       isExcluded: _isExcluded,
       notes: _notes,
+      receiptPath: _receiptPath,
+      receiptBase64: _receiptBase64,
     );
     provider.updateTransaction(updatedTransaction);
   }
@@ -425,18 +483,16 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildActionCard(
-                      icon: Icons.attach_file_rounded,
-                      iconColor: Colors.teal,
-                      title: 'Attach',
-                      subtitle: 'Add receipt/photo',
-                      onTap: () {
-                        // TODO: Implement attach
-                      },
-                    ),
+                    child: _buildReceiptCard(),
                   ),
                 ],
               ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+
+              // Receipt Preview
+              if (_receiptPath != null && _receiptPath!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _buildReceiptPreview(),
+              ],
 
               const SizedBox(height: 16),
 
@@ -717,6 +773,688 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildReceiptCard() {
+    final hasReceipt = _receiptPath != null && _receiptPath!.isNotEmpty;
+    final isSmsTransaction = widget.transaction.smsBody != null && 
+                             widget.transaction.smsBody!.isNotEmpty;
+    
+    return GestureDetector(
+      onTap: _isSyncing ? null : () => _showAttachSheet(context),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: hasReceipt 
+                  ? Colors.teal.withValues(alpha: 0.15)
+                  : AppTheme.surface.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: hasReceipt
+                    ? Colors.teal.withValues(alpha: 0.3)
+                    : Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: _isSyncing
+                      ? const SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.teal,
+                          ),
+                        )
+                      : Icon(
+                          hasReceipt ? Icons.receipt_long_rounded : Icons.attach_file_rounded,
+                          color: Colors.teal,
+                          size: 28,
+                        ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  _isSyncing 
+                      ? 'Syncing...' 
+                      : (hasReceipt ? 'Receipt' : 'Attach'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _isSyncing
+                      ? 'Please wait'
+                      : (hasReceipt 
+                          ? (isSmsTransaction ? 'Tap to view' : 'Synced ✓') 
+                          : 'Add receipt/photo'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: hasReceipt ? Colors.teal : AppTheme.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReceiptPreview() {
+    return GestureDetector(
+      onTap: () => _showReceiptFullScreen(context),
+      child: _buildGlassCard(
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                File(_receiptPath!),
+                width: 70,
+                height: 70,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: Colors.teal.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.broken_image_rounded,
+                      color: Colors.teal,
+                      size: 28,
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Receipt Attached',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tap to view full size',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: () => _showRemoveReceiptDialog(context),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.expense.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.delete_rounded,
+                  color: AppTheme.expense,
+                  size: 20,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(delay: 250.ms).slideX(begin: -0.05);
+  }
+
+  void _showAttachSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Attach Receipt',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Choose how to add your receipt',
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildAttachOption(
+                    icon: Icons.camera_alt_rounded,
+                    color: Colors.teal,
+                    title: 'Camera',
+                    subtitle: 'Take a photo',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage(ImageSource.camera);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildAttachOption(
+                    icon: Icons.photo_library_rounded,
+                    color: Colors.purple,
+                    title: 'Gallery',
+                    subtitle: 'Choose photo',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage(ImageSource.gallery);
+                    },
+                  ),
+                ),
+              ],
+            ),
+            if (_receiptPath != null && _receiptPath!.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  _showReceiptFullScreen(context);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.visibility_rounded,
+                        color: Colors.white70,
+                        size: 20,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'View Current Receipt',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAttachOption({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: color.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final isSmsTransaction = widget.transaction.smsBody != null && 
+                             widget.transaction.smsBody!.isNotEmpty;
+    
+    try {
+      // Request camera or photos permission
+      PermissionStatus status;
+      if (source == ImageSource.camera) {
+        status = await Permission.camera.request();
+      } else {
+        status = await Permission.photos.request();
+        // Fallback for older Android
+        if (status.isDenied) {
+          status = await Permission.storage.request();
+        }
+      }
+
+      if (!status.isGranted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.warning_rounded, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Text(
+                    source == ImageSource.camera
+                        ? 'Camera permission required'
+                        : 'Gallery permission required',
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.amber.shade700,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              margin: const EdgeInsets.all(16),
+              action: SnackBarAction(
+                label: 'Settings',
+                textColor: Colors.white,
+                onPressed: () => openAppSettings(),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      final picker = ImagePicker();
+      final XFile? pickedFile = await picker.pickImage(
+        source: source,
+        imageQuality: 60, // Reduced quality for smaller base64
+        maxWidth: 1200,
+        maxHeight: 1200,
+      );
+
+      if (pickedFile == null) return;
+
+      // Show syncing indicator for non-SMS transactions
+      if (!isSmsTransaction && mounted) {
+        setState(() {
+          _isSyncing = true;
+        });
+      }
+
+      // Save to app documents directory
+      final appDir = await getApplicationDocumentsDirectory();
+      final receiptsDir = Directory('${appDir.path}/receipts');
+      if (!await receiptsDir.exists()) {
+        await receiptsDir.create(recursive: true);
+      }
+
+      final fileName = 'receipt_${widget.transaction.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final savedPath = '${receiptsDir.path}/$fileName';
+
+      // Copy file to app storage
+      await File(pickedFile.path).copy(savedPath);
+
+      // Delete old receipt if exists
+      if (_receiptPath != null && _receiptPath!.isNotEmpty) {
+        try {
+          final oldFile = File(_receiptPath!);
+          if (await oldFile.exists()) {
+            await oldFile.delete();
+          }
+        } catch (e) {
+          // Ignore deletion errors
+        }
+      }
+
+      // For non-SMS transactions, convert to base64 for Firebase sync
+      String? base64Image;
+      if (!isSmsTransaction) {
+        try {
+          final bytes = await File(savedPath).readAsBytes();
+          base64Image = base64Encode(bytes);
+        } catch (e) {
+          debugPrint('Failed to encode receipt to base64: $e');
+        }
+      }
+
+      setState(() {
+        _receiptPath = savedPath;
+        _receiptBase64 = base64Image;
+        _isSyncing = false;
+      });
+      
+      // Update and sync immediately
+      _updateTransaction();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                const SizedBox(width: 12),
+                Text(isSmsTransaction 
+                    ? 'Receipt attached successfully!' 
+                    : 'Receipt attached and synced!'),
+              ],
+            ),
+            backgroundColor: AppTheme.income,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isSyncing = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_rounded, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Failed to attach receipt: $e')),
+              ],
+            ),
+            backgroundColor: AppTheme.expense,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showReceiptFullScreen(BuildContext context) {
+    if (_receiptPath == null || _receiptPath!.isEmpty) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 20),
+              ),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: const Text(
+              'Receipt',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+          body: InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Center(
+              child: Image.file(
+                File(_receiptPath!),
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.broken_image_rounded,
+                        color: AppTheme.textSecondary,
+                        size: 64,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Could not load image',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showRemoveReceiptDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.expense.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  Icons.delete_forever_rounded,
+                  color: AppTheme.expense,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Remove Receipt?',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Are you sure you want to remove the attached receipt? This action cannot be undone.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        Navigator.pop(context);
+                        await _removeReceipt();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: AppTheme.expense,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Remove',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _removeReceipt() async {
+    if (_receiptPath != null && _receiptPath!.isNotEmpty) {
+      try {
+        final file = File(_receiptPath!);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (e) {
+        // Ignore deletion errors
+      }
+    }
+
+    setState(() {
+      _receiptPath = null;
+      _receiptBase64 = null;
+    });
+    
+    // Update and sync immediately
+    _updateTransaction();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Receipt removed'),
+            ],
+          ),
+          backgroundColor: AppTheme.income,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+    }
   }
 
   Future<bool> _requestPermissions() async {

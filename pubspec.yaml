@@ -59,6 +59,7 @@ dependencies:
   google_sign_in: ^6.2.2
   flutter_sms_inbox: ^1.0.4
   flutter_contacts: ^1.1.9+2
+  image_picker: ^1.0.7
 
 dev_dependencies:
   flutter_test:

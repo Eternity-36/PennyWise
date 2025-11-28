@@ -46,6 +46,12 @@ class Transaction extends HiveObject {
   @HiveField(13)
   final String? notes;
 
+  @HiveField(14)
+  final String? receiptPath;
+
+  @HiveField(15)
+  final String? receiptBase64;
+
   Transaction({
     required this.id,
     required this.title,
@@ -61,6 +67,8 @@ class Transaction extends HiveObject {
     this.accountLast4,
     this.isExcluded = false,
     this.notes,
+    this.receiptPath,
+    this.receiptBase64,
   });
 
   Map<String, dynamic> toJson() {
@@ -79,6 +87,8 @@ class Transaction extends HiveObject {
       'accountLast4': accountLast4,
       'isExcluded': isExcluded,
       'notes': notes,
+      'receiptPath': receiptPath,
+      'receiptBase64': receiptBase64,
     };
   }
 
@@ -98,6 +108,8 @@ class Transaction extends HiveObject {
       accountLast4: json['accountLast4'],
       isExcluded: json['isExcluded'] ?? false,
       notes: json['notes'],
+      receiptPath: json['receiptPath'],
+      receiptBase64: json['receiptBase64'],
     );
   }
 }
