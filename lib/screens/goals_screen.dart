@@ -200,74 +200,91 @@ class GoalsScreen extends StatelessWidget {
     final currency = provider.currencySymbol;
     final progress = goal.progress;
 
-    return GestureDetector(
-      onLongPress: () => _showDeleteDialog(context, provider, goal),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  height: 80,
-                  width: 80,
-                  child: CircularProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.white.withValues(alpha: 0.1),
-                    valueColor: AlwaysStoppedAnimation<Color>(goal.color),
-                    strokeWidth: 8,
-                  ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Delete button at top right
+          Align(
+            alignment: Alignment.topRight,
+            child: GestureDetector(
+              onTap: () => _showDeleteDialog(context, provider, goal),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                Icon(goal.icon, color: goal.color, size: 32),
-              ],
-            ),
-            Column(
-              children: [
-                Text(
-                  goal.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: Icon(
+                  Icons.delete_outline,
+                  color: Colors.red.withValues(alpha: 0.7),
+                  size: 18,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${NumberFormat.compactCurrency(symbol: currency).format(goal.savedAmount)} / ${NumberFormat.compactCurrency(symbol: currency).format(goal.targetAmount)}',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => _showAddSavingsDialog(context, provider, goal),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.1),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('Add Money'),
               ),
             ),
-          ],
-        ),
+          ),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                height: 70,
+                width: 70,
+                child: CircularProgressIndicator(
+                  value: progress,
+                  backgroundColor: Colors.white.withValues(alpha: 0.1),
+                  valueColor: AlwaysStoppedAnimation<Color>(goal.color),
+                  strokeWidth: 8,
+                ),
+              ),
+              Icon(goal.icon, color: goal.color, size: 28),
+            ],
+          ),
+          Column(
+            children: [
+              Text(
+                goal.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${NumberFormat.compactCurrency(symbol: currency).format(goal.savedAmount)} / ${NumberFormat.compactCurrency(symbol: currency).format(goal.targetAmount)}',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => _showAddSavingsDialog(context, provider, goal),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white.withValues(alpha: 0.1),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Add Money', style: TextStyle(fontSize: 12)),
+            ),
+          ),
+        ],
       ),
     ).animate().fadeIn(delay: (index * 100).ms).scale();
   }

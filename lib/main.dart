@@ -7,6 +7,7 @@ import 'models/budget.dart';
 import 'models/category.dart';
 import 'models/loan.dart';
 import 'models/goal.dart';
+import 'models/account.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/lock_screen.dart';
@@ -23,6 +24,7 @@ void main() async {
   Hive.registerAdapter(LoanAdapter());
   Hive.registerAdapter(LoanTypeAdapter());
   Hive.registerAdapter(GoalAdapter());
+  Hive.registerAdapter(AccountAdapter());
   await Hive.openBox<Transaction>('transactions');
   await Hive.openBox<String>('deletedSmsIds'); // Blocklist for deleted SMS transactions
   final settingsBox = await Hive.openBox('settings');

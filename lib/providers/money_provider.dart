@@ -6,10 +6,12 @@ import '../models/budget.dart';
 import '../models/category.dart';
 import '../models/loan.dart';
 import '../models/goal.dart';
+import '../models/account.dart';
 import '../repositories/transaction_repository.dart';
 import '../repositories/hive_transaction_repository.dart';
 import '../repositories/firestore_transaction_repository.dart';
 import '../services/sms_service.dart';
+import '../services/account_service.dart';
 
 class MoneyProvider extends ChangeNotifier {
   late TransactionRepository _repository;
@@ -27,6 +29,13 @@ class MoneyProvider extends ChangeNotifier {
   List<Transaction> _transactions = [];
   bool _smsTrackingEnabled = false;
   bool _biometricLockEnabled = false;
+  bool _isLoading = true; // Loading state for skeleton
+
+  // Multi-account support
+  AccountService? _accountService;
+  List<Account> _accounts = [];
+  Account? _activeAccount;
+  String? _activeAccountId;
 
   String get userName => _userName;
   String get cardName => _cardName;
@@ -39,14 +48,30 @@ class MoneyProvider extends ChangeNotifier {
   List<Transaction> get transactions => _transactions;
   bool get smsTrackingEnabled => _smsTrackingEnabled;
   bool get biometricLockEnabled => _biometricLockEnabled;
+  bool get isLoading => _isLoading; // Expose loading state
+
+  // Account getters
+  List<Account> get accounts => _accounts;
+  Account? get activeAccount => _activeAccount;
+  String? get activeAccountId => _activeAccountId;
 
   MoneyProvider() {
-    _initRepository();
-    _loadSettings();
-    _initBudget();
+    _init();
   }
 
-  void _initRepository() {
+  Future<void> _init() async {
+    _isLoading = true;
+    notifyListeners();
+    
+    await _initRepository();
+    _loadSettings();
+    _initBudget();
+    
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> _initRepository() async {
     final isGuest = _settingsBox.get('isGuest', defaultValue: true);
     final userId = _settingsBox.get('userId');
 
@@ -55,11 +80,19 @@ class MoneyProvider extends ChangeNotifier {
     _localRepository = HiveTransactionRepository(box);
 
     if (!isGuest && userId != null) {
+      _userId = userId; // Set userId for returning users
       _repository = FirestoreTransactionRepository(userId);
+      
+      // Initialize account service for non-guest users
+      _accountService = AccountService(userId);
+      // Accounts and transactions will be loaded via _initializeAccounts
+      // which sets up real-time sync and loads account-specific data
+      await _initializeAccounts();
     } else {
       _repository = _localRepository;
+      // Only load from local repository for guest users
+      await _loadTransactions();
     }
-    _loadTransactions();
   }
 
   Future<void> _loadTransactions() async {
@@ -258,19 +291,40 @@ class MoneyProvider extends ChangeNotifier {
   }
 
   Future<void> addLoan(Loan loan) async {
-    await _loanBox.add(loan);
-    _loadLoans();
+    // Save to Firebase if account service available (real-time sync will update UI)
+    if (_accountService != null && _activeAccountId != null) {
+      await _accountService!.addLoan(_activeAccountId!, loan);
+      // Real-time sync will update _loans via onLoansChanged callback
+    } else {
+      // Fallback to local storage for guest users
+      await _loanBox.add(loan);
+      _loadLoans();
+    }
   }
 
   Future<void> updateLoan(Loan loan) async {
-    await loan.save();
-    _loadLoans();
+    // Update in Firebase (real-time sync will update UI)
+    if (_accountService != null && _activeAccountId != null) {
+      await _accountService!.updateLoan(_activeAccountId!, loan);
+      // Real-time sync will update _loans via onLoansChanged callback
+    } else {
+      // Fallback for guest users
+      await loan.save();
+      _loadLoans();
+    }
   }
 
   Future<void> deleteLoan(String id) async {
-    final loanToDelete = _loanBox.values.firstWhere((l) => l.id == id);
-    await loanToDelete.delete();
-    _loadLoans();
+    // Delete from Firebase (real-time sync will update UI)
+    if (_accountService != null && _activeAccountId != null) {
+      await _accountService!.deleteLoan(_activeAccountId!, id);
+      // Real-time sync will update _loans via onLoansChanged callback
+    } else {
+      // Fallback for guest users
+      final loanToDelete = _loanBox.values.firstWhere((l) => l.id == id);
+      await loanToDelete.delete();
+      _loadLoans();
+    }
   }
 
   double get totalLent {
@@ -286,82 +340,124 @@ class MoneyProvider extends ChangeNotifier {
   }
 
   Future<void> addGoal(Goal goal) async {
-    await _goalBox.add(goal);
-    _loadGoals();
+    // Save to Firebase if account service available (real-time sync will update UI)
+    if (_accountService != null && _activeAccountId != null) {
+      await _accountService!.addGoal(_activeAccountId!, goal);
+      // Real-time sync will update _goals via onGoalsChanged callback
+    } else {
+      // Fallback to local storage for guest users
+      await _goalBox.add(goal);
+      _loadGoals();
+    }
   }
 
   Future<void> updateGoal(Goal goal) async {
-    await goal.save();
-    _loadGoals();
+    // Update in Firebase (real-time sync will update UI)
+    if (_accountService != null && _activeAccountId != null) {
+      await _accountService!.updateGoal(_activeAccountId!, goal);
+      // Real-time sync will update _goals via onGoalsChanged callback
+    } else {
+      // Fallback for guest users
+      await goal.save();
+      _loadGoals();
+    }
   }
 
   Future<void> deleteGoal(String id) async {
-    final goalToDelete = _goalBox.values.firstWhere((g) => g.id == id);
-    await goalToDelete.delete();
-    _loadGoals();
+    // Delete from Firebase (real-time sync will update UI)
+    if (_accountService != null && _activeAccountId != null) {
+      await _accountService!.deleteGoal(_activeAccountId!, id);
+      // Real-time sync will update _goals via onGoalsChanged callback
+    } else {
+      // Fallback for guest users
+      final goalToDelete = _goalBox.values.firstWhere((g) => g.id == id);
+      await goalToDelete.delete();
+      _loadGoals();
+    }
   }
 
   Future<void> addSavingsToGoal(String id, double amount) async {
-    final goal = _goalBox.values.firstWhere((g) => g.id == id);
+    // Find the goal from the current list
+    final goalIndex = _goals.indexWhere((g) => g.id == id);
+    if (goalIndex == -1) return;
+    
+    final goal = _goals[goalIndex];
     goal.savedAmount += amount;
     if (goal.savedAmount > goal.targetAmount) {
       goal.savedAmount = goal.targetAmount;
     }
-    await goal.save();
-    _loadGoals();
+    
+    // Update in Firebase (real-time sync will update UI)
+    if (_accountService != null && _activeAccountId != null) {
+      await _accountService!.updateGoal(_activeAccountId!, goal);
+      // Real-time sync will update _goals via onGoalsChanged callback
+    } else {
+      // Fallback for guest users
+      await goal.save();
+      _loadGoals();
+    }
   }
 
   void _loadCurrentBudget() {
-    if (_userId == null) {
+    if (_userId == null && _activeAccountId == null) {
       _currentBudget = null;
       notifyListeners();
       return;
     }
     final now = DateTime.now();
+    final accountId = _activeAccountId ?? _userId!;
     _currentBudget = _budgetBox.values.firstWhere(
       (b) =>
           b.month == now.month &&
           b.year == now.year &&
-          b.accountId == _userId, // Using accountId to store userId for now
+          b.accountId == accountId,
       orElse: () => Budget(
         monthlyLimit: 0,
         month: now.month,
         year: now.year,
-        accountId: _userId!,
+        accountId: accountId,
       ),
     );
     notifyListeners();
   }
 
   Future<void> setBudget(double limit) async {
-    if (_userId == null) return;
+    final accountId = _activeAccountId ?? _userId;
+    if (accountId == null) return;
 
     final now = DateTime.now();
     final existing = _budgetBox.values.where(
       (b) =>
-          b.month == now.month && b.year == now.year && b.accountId == _userId,
+          b.month == now.month && b.year == now.year && b.accountId == accountId,
     );
 
+    Budget budget;
     if (existing.isNotEmpty) {
-      final budget = existing.first;
+      budget = existing.first;
       budget.monthlyLimit = limit;
       await budget.save();
       _currentBudget = budget;
     } else {
-      final newBudget = Budget(
+      budget = Budget(
         monthlyLimit: limit,
         month: now.month,
         year: now.year,
-        accountId: _userId!,
+        accountId: accountId,
       );
-      await _budgetBox.add(newBudget);
-      _currentBudget = newBudget;
+      await _budgetBox.add(budget);
+      _currentBudget = budget;
+    }
+    
+    // Save to Firebase
+    if (_accountService != null && _activeAccountId != null) {
+      await _accountService!.saveBudget(_activeAccountId!, budget);
     }
     notifyListeners();
   }
 
   Future<void> setCategoryLimit(String categoryName, double limit) async {
-    if (_userId == null) return;
+    final accountId = _activeAccountId ?? _userId;
+    if (accountId == null) return;
 
     if (_currentBudget == null) {
       await setBudget(0);
@@ -370,6 +466,11 @@ class MoneyProvider extends ChangeNotifier {
     if (_currentBudget != null) {
       _currentBudget!.categoryLimits[categoryName] = limit;
       await _currentBudget!.save();
+      
+      // Save to Firebase
+      if (_accountService != null && _activeAccountId != null) {
+        await _accountService!.saveBudget(_activeAccountId!, _currentBudget!);
+      }
       notifyListeners();
     }
   }
@@ -489,7 +590,12 @@ class MoneyProvider extends ChangeNotifier {
     print('===============================');
     
     if (addedCount > 0) {
-      await _loadTransactions(); // Reload all transactions from the repository
+      // Reload all transactions to include new SMS transactions
+      if (_accountService != null && _activeAccountId != null) {
+        await _loadAccountData(_activeAccountId!);
+      } else {
+        await _loadTransactions(); // For guest users
+      }
     }
   }
 
@@ -524,9 +630,10 @@ class MoneyProvider extends ChangeNotifier {
   }
 
   Future<void> addTransaction(Transaction transaction) async {
-    if (_userId == null) return;
+    final accountId = _activeAccountId ?? _userId;
+    if (accountId == null) return;
 
-    // Ensure the transaction has the correct userId
+    // Ensure the transaction has the correct userId and accountId
     final newTransaction = Transaction(
       id: transaction.id,
       title: transaction.title,
@@ -534,40 +641,57 @@ class MoneyProvider extends ChangeNotifier {
       date: transaction.date,
       isExpense: transaction.isExpense,
       category: transaction.category,
-      accountId:
-          _userId!, // Using accountId for now, ideally should use userId field
+      accountId: accountId,
       userId: _userId,
+      notes: transaction.notes,
+      receiptPath: transaction.receiptPath,
+      receiptBase64: transaction.receiptBase64,
     );
 
-    await _repository.addTransaction(newTransaction);
-    await _loadTransactions();
+    // Save to Firebase via account service (non-SMS only)
+    if (_accountService != null && _activeAccountId != null) {
+      await _accountService!.addTransaction(_activeAccountId!, newTransaction);
+      // Real-time sync will update the transactions list automatically
+    } else {
+      // Fallback to old repository for guest users
+      await _repository.addTransaction(newTransaction);
+      await _loadTransactions();
+    }
   }
 
   Future<void> deleteTransaction(Transaction transaction) async {
-    print('');
-    print('========== DELETE CALLED ==========');
-    print('ID: ${transaction.id}');
-    print('Title: ${transaction.title}');
-    print('Amount: ${transaction.amount}');
-    print('Has SMS Body: ${transaction.smsBody != null && transaction.smsBody!.isNotEmpty}');
-    print('SMS Body: ${transaction.smsBody ?? "NULL"}');
+    debugPrint('');
+    debugPrint('========== DELETE CALLED ==========');
+    debugPrint('ID: ${transaction.id}');
+    debugPrint('Title: ${transaction.title}');
+    debugPrint('Amount: ${transaction.amount}');
+    debugPrint('Has SMS Body: ${transaction.smsBody != null && transaction.smsBody!.isNotEmpty}');
     
     // If it's an SMS transaction, add to blocklist to prevent re-import
     if (transaction.smsBody != null && transaction.smsBody!.isNotEmpty) {
       await _deletedSmsBox.add(transaction.id);
-      print('>>> ADDED TO BLOCKLIST <<<');
-      print('Blocklist now has: ${_deletedSmsBox.length} items');
+      debugPrint('>>> ADDED TO BLOCKLIST <<<');
       // SMS transactions are stored locally, so delete from local repository
       await _localRepository.deleteTransaction(transaction.id);
+      // Reload transactions for guest users or reload account data for logged-in users
+      if (_accountService != null && _activeAccountId != null) {
+        await _loadAccountData(_activeAccountId!);
+      } else {
+        await _loadTransactions();
+      }
     } else {
-      print('>>> NOT AN SMS TRANSACTION - NOT BLOCKING <<<');
-      // Non-SMS transactions use the main repository
-      await _repository.deleteTransaction(transaction.id);
+      debugPrint('>>> NOT AN SMS TRANSACTION - NOT BLOCKING <<<');
+      // Delete from Firebase via account service
+      if (_accountService != null && _activeAccountId != null) {
+        await _accountService!.deleteTransaction(_activeAccountId!, transaction.id);
+        // Real-time sync will update the transactions list automatically
+      } else {
+        // Fallback to old repository for guest users
+        await _repository.deleteTransaction(transaction.id);
+        await _loadTransactions();
+      }
     }
-    print('====================================');
-    print('');
-    
-    await _loadTransactions();
+    debugPrint('====================================');
   }
 
   // Get count of blocked SMS transactions
@@ -577,9 +701,8 @@ class MoneyProvider extends ChangeNotifier {
   Future<void> clearSmsBlocklist() async {
     final count = _deletedSmsBox.length;
     await _deletedSmsBox.clear();
-    print('========== BLOCKLIST CLEARED ==========');
-    print('Cleared $count blocked SMS IDs');
-    print('======================================');
+    debugPrint('========== BLOCKLIST CLEARED ==========');
+    debugPrint('Cleared $count blocked SMS IDs');
     notifyListeners();
   }
 
@@ -591,12 +714,22 @@ class MoneyProvider extends ChangeNotifier {
     if (isSmsTransaction) {
       // SMS transactions are stored locally only
       await _localRepository.updateTransaction(newTransaction);
+      // Reload to update UI
+      if (_accountService != null && _activeAccountId != null) {
+        await _loadAccountData(_activeAccountId!);
+      } else {
+        await _loadTransactions();
+      }
     } else {
-      // Non-SMS transactions use Firebase (or main repository)
-      await _repository.updateTransaction(newTransaction);
+      // Non-SMS transactions use Firebase via account service
+      if (_accountService != null && _activeAccountId != null) {
+        await _accountService!.updateTransaction(_activeAccountId!, newTransaction);
+        // Real-time sync will update the transactions list automatically
+      } else {
+        await _repository.updateTransaction(newTransaction);
+        await _loadTransactions();
+      }
     }
-    
-    await _loadTransactions();
   }
 
   Future<void> initializeUser({
@@ -637,6 +770,9 @@ class MoneyProvider extends ChangeNotifier {
     if (!isGuest && userId != null) {
       _repository = FirestoreTransactionRepository(userId);
       
+      // Initialize account service
+      _accountService = AccountService(userId);
+      
       // Save user profile to Firebase
       try {
         await FirebaseFirestore.instance.collection('users').doc(userId).set({
@@ -647,16 +783,19 @@ class MoneyProvider extends ChangeNotifier {
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
+        
+        // Initialize default account and load accounts
+        // This also loads transactions via _loadAccountData
+        await _initializeAccounts();
       } catch (e) {
         debugPrint('Failed to save user profile to Firebase: $e');
       }
     } else {
       final box = Hive.box<Transaction>('transactions');
       _repository = HiveTransactionRepository(box);
+      // Only load transactions for guest users (non-guest uses account service)
+      await _loadTransactions();
     }
-
-    // Reload transactions from the new repository
-    await _loadTransactions();
 
     // Ensure budget box is open before accessing it
     if (!Hive.isBoxOpen('budgets')) {
@@ -687,6 +826,268 @@ class MoneyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ============== MULTI-ACCOUNT MANAGEMENT ==============
+
+  /// Initialize accounts - load existing or create default
+  Future<void> _initializeAccounts() async {
+    if (_accountService == null) return;
+
+    try {
+      // Get or create default account
+      final defaultAccount = await _accountService!.initializeDefaultAccount();
+      
+      // Load all accounts
+      _accounts = await _accountService!.getAccounts();
+      
+      // Set active account from saved preference or use default
+      final savedActiveAccountId = _settingsBox.get('activeAccountId');
+      if (savedActiveAccountId != null && _accounts.any((a) => a.id == savedActiveAccountId)) {
+        _activeAccountId = savedActiveAccountId;
+        _activeAccount = _accounts.firstWhere((a) => a.id == savedActiveAccountId);
+      } else {
+        _activeAccountId = defaultAccount.id;
+        _activeAccount = defaultAccount;
+        await _settingsBox.put('activeAccountId', defaultAccount.id);
+      }
+
+      // Setup real-time sync callbacks
+      _setupAccountSyncCallbacks();
+      
+      // Start real-time sync for active account
+      _accountService!.startAllSync(_activeAccountId!);
+      
+      // Load data for active account
+      await _loadAccountData(_activeAccountId!);
+      
+      debugPrint('✅ Accounts initialized. Active: ${_activeAccount?.name}');
+    } catch (e) {
+      debugPrint('Error initializing accounts: $e');
+    }
+    notifyListeners();
+  }
+
+  /// Setup callbacks for real-time sync
+  void _setupAccountSyncCallbacks() {
+    if (_accountService == null) return;
+
+    _accountService!.onAccountsChanged = (accounts) {
+      _accounts = accounts;
+      // Update active account reference
+      if (_activeAccountId != null) {
+        _activeAccount = accounts.firstWhere(
+          (a) => a.id == _activeAccountId,
+          orElse: () => accounts.first,
+        );
+      }
+      notifyListeners();
+    };
+
+    _accountService!.onTransactionsChanged = (transactions) {
+      // Merge with SMS transactions (local only)
+      _mergeTransactionsWithSms(transactions);
+    };
+
+    _accountService!.onBudgetsChanged = (budgets) {
+      _loadCurrentBudgetFromList(budgets);
+    };
+
+    _accountService!.onLoansChanged = (loans) {
+      _loans = loans;
+      notifyListeners();
+    };
+
+    _accountService!.onGoalsChanged = (goals) {
+      _goals = goals;
+      notifyListeners();
+    };
+  }
+
+  /// Merge Firebase transactions with local SMS transactions
+  /// Only includes SMS transactions if the active account has showSmsTransactions enabled
+  Future<void> _mergeTransactionsWithSms(List<Transaction> firebaseTransactions) async {
+    try {
+      final Map<String, Transaction> transactionMap = {};
+      
+      // Add Firebase transactions
+      for (final t in firebaseTransactions) {
+        transactionMap[t.id] = t;
+      }
+      
+      // Only add SMS transactions if the active account has SMS enabled
+      final showSms = _activeAccount?.showSmsTransactions ?? false;
+      if (showSms) {
+        final localTransactions = await _localRepository.getTransactions();
+        // Add local SMS transactions (these take priority)
+        for (final t in localTransactions) {
+          if (t.smsBody != null && t.smsBody!.isNotEmpty) {
+            transactionMap[t.id] = t;
+          }
+        }
+      }
+      
+      _transactions = transactionMap.values.toList();
+      _transactions.sort((a, b) => b.date.compareTo(a.date));
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error merging transactions: $e');
+    }
+  }
+
+  /// Load budget from list
+  void _loadCurrentBudgetFromList(List<Budget> budgets) {
+    final now = DateTime.now();
+    try {
+      _currentBudget = budgets.firstWhere(
+        (b) => b.month == now.month && b.year == now.year,
+        orElse: () => Budget(
+          monthlyLimit: 0,
+          month: now.month,
+          year: now.year,
+          accountId: _activeAccountId ?? 'default',
+        ),
+      );
+    } catch (e) {
+      _currentBudget = Budget(
+        monthlyLimit: 0,
+        month: now.month,
+        year: now.year,
+        accountId: _activeAccountId ?? 'default',
+      );
+    }
+    notifyListeners();
+  }
+
+  /// Load all data for a specific account
+  Future<void> _loadAccountData(String accountId) async {
+    if (_accountService == null) return;
+
+    try {
+      // Load transactions (merged with SMS)
+      final transactions = await _accountService!.getTransactions(accountId);
+      await _mergeTransactionsWithSms(transactions);
+      
+      // Load budgets
+      final budgets = await _accountService!.getBudgets(accountId);
+      _loadCurrentBudgetFromList(budgets);
+      
+      // Load loans
+      _loans = await _accountService!.getLoans(accountId);
+      
+      // Load goals
+      _goals = await _accountService!.getGoals(accountId);
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading account data: $e');
+    }
+  }
+
+  /// Create a new account
+  Future<Account?> createAccount(String name, {int? colorValue, bool showSmsTransactions = false}) async {
+    if (_accountService == null) return null;
+
+    try {
+      final account = await _accountService!.createAccount(
+        name: name,
+        colorValue: colorValue,
+        showSmsTransactions: showSmsTransactions,
+      );
+      
+      // Reload accounts
+      _accounts = await _accountService!.getAccounts();
+      notifyListeners();
+      
+      return account;
+    } catch (e) {
+      debugPrint('Error creating account: $e');
+      return null;
+    }
+  }
+
+  /// Update account SMS setting
+  Future<void> updateAccountSmsEnabled(String accountId, bool enabled) async {
+    if (_accountService == null) return;
+
+    try {
+      final account = _accounts.firstWhere((a) => a.id == accountId);
+      account.showSmsTransactions = enabled;
+      await _accountService!.updateAccount(account);
+      
+      // If this is the active account, reload transactions
+      if (accountId == _activeAccountId) {
+        _activeAccount = account;
+        await _loadAccountData(accountId);
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error updating account SMS setting: $e');
+    }
+  }
+
+  /// Switch to a different account
+  Future<void> switchAccount(String accountId) async {
+    if (_accountService == null) return;
+    if (accountId == _activeAccountId) return;
+
+    try {
+      // Stop current sync
+      _accountService!.stopAllSync();
+      
+      // Update active account
+      _activeAccountId = accountId;
+      _activeAccount = _accounts.firstWhere((a) => a.id == accountId);
+      await _settingsBox.put('activeAccountId', accountId);
+      
+      // Clear all current data immediately to show loading state
+      _transactions = [];
+      _loans = [];
+      _goals = [];
+      _currentBudget = null;
+      notifyListeners();
+      
+      // Load data for new account first
+      await _loadAccountData(accountId);
+      
+      // Then start sync for new account (callbacks will update data going forward)
+      _accountService!.startAllSync(accountId);
+      
+      debugPrint('✅ Switched to account: ${_activeAccount?.name}');
+    } catch (e) {
+      debugPrint('Error switching account: $e');
+    }
+  }
+
+  /// Delete an account
+  Future<bool> deleteAccount(String accountId) async {
+    if (_accountService == null) return false;
+    if (_accounts.length <= 1) return false; // Can't delete last account
+    if (accountId == _activeAccountId) return false; // Can't delete active account
+
+    try {
+      await _accountService!.deleteAccount(accountId);
+      _accounts = await _accountService!.getAccounts();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting account: $e');
+      return false;
+    }
+  }
+
+  /// Update account name
+  Future<void> updateAccountName(String accountId, String newName) async {
+    if (_accountService == null) return;
+
+    try {
+      final account = _accounts.firstWhere((a) => a.id == accountId);
+      account.name = newName;
+      await _accountService!.updateAccount(account);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error updating account name: $e');
+    }
+  }
+
   /// Load user profile from Firebase (for returning users on new devices)
   Future<Map<String, dynamic>?> loadUserProfileFromFirebase(String userId) async {
     try {
@@ -701,6 +1102,11 @@ class MoneyProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    // Stop account sync
+    _accountService?.stopAllSync();
+    _accountService?.dispose();
+    _accountService = null;
+    
     _userName = 'User';
     _currencySymbol = '₹';
     _currencyCode = 'INR';
@@ -712,12 +1118,18 @@ class MoneyProvider extends ChangeNotifier {
     await _settingsBox.delete('isGuest');
     await _settingsBox.delete('userId');
     await _settingsBox.delete('photoURL');
+    await _settingsBox.delete('activeAccountId');
 
     // NOTE: We do NOT delete 'guestUserId', 'guestUserName', etc.
     // This allows guests to "log back in" and restore their data.
 
     _transactions = [];
     _currentBudget = null;
+    _accounts = [];
+    _activeAccount = null;
+    _activeAccountId = null;
+    _loans = [];
+    _goals = [];
 
     notifyListeners();
   }

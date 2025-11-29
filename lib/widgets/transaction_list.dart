@@ -8,6 +8,7 @@ import '../models/transaction.dart';
 import '../utils/app_theme.dart';
 import '../screens/edit_transaction_screen.dart';
 import '../screens/transaction_detail_screen.dart';
+import 'skeleton_loading.dart';
 
 class TransactionList extends StatefulWidget {
   const TransactionList({super.key});
@@ -28,10 +29,36 @@ class _TransactionListState extends State<TransactionList> {
     if (!_isDeleting) {
       final provider = Provider.of<MoneyProvider>(context);
       if (_localTransactions.isEmpty || 
-          _shouldSync(provider.transactions)) {
+          _shouldSync(provider.transactions) ||
+          _isAccountChange(provider.transactions)) {
         _localTransactions = List.from(provider.transactions);
+        _animatedItems.clear(); // Reset animations when account changes
       }
     }
+  }
+
+  bool _isAccountChange(List<Transaction> providerTransactions) {
+    // Detect account change: if the lists are completely different (no overlap)
+    // or if the provider has fewer transactions (switched to empty account)
+    if (_localTransactions.isEmpty || providerTransactions.isEmpty) {
+      return _localTransactions.length != providerTransactions.length;
+    }
+    
+    final localIds = _localTransactions.map((t) => t.id).toSet();
+    final providerIds = providerTransactions.map((t) => t.id).toSet();
+    
+    // If there's no overlap OR significant difference, it's likely an account change
+    final overlap = localIds.intersection(providerIds);
+    if (overlap.isEmpty && (localIds.isNotEmpty || providerIds.isNotEmpty)) {
+      return true;
+    }
+    
+    // If provider has fewer items (switched from SMS account to non-SMS)
+    if (providerTransactions.length < _localTransactions.length) {
+      return true;
+    }
+    
+    return false;
   }
 
   bool _shouldSync(List<Transaction> providerTransactions) {
@@ -70,6 +97,11 @@ class _TransactionListState extends State<TransactionList> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<MoneyProvider>(context);
+
+    // Show skeleton loading while data is being fetched
+    if (provider.isLoading) {
+      return const TransactionListSkeleton(itemCount: 5);
+    }
 
     if (_localTransactions.isEmpty) {
       return Center(

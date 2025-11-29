@@ -212,137 +212,158 @@ class _LoansScreenState extends State<LoansScreen>
     final progress = loan.progress;
     final isCompleted = loan.isCompleted;
 
-    return Dismissible(
-      key: Key(loan.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        color: Colors.red,
-        child: const Icon(Icons.delete, color: Colors.white),
-      ),
-      confirmDismiss: (direction) async {
-        return await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: const Color(0xFF1E293B),
-            title: const Text(
-              'Delete Loan?',
-              style: TextStyle(color: Colors.white),
-            ),
-            content: const Text(
-              'This action cannot be undone.',
-              style: TextStyle(color: Colors.white70),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text(
-                  'Delete',
-                  style: TextStyle(color: Colors.red),
-                ),
-              ),
-            ],
+    return GestureDetector(
+      onTap: () => _showEditLoanDialog(context, provider, loan),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isCompleted
+                ? Colors.green.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.05),
           ),
-        );
-      },
-      onDismissed: (direction) {
-        provider.deleteLoan(loan.id);
-      },
-      child: GestureDetector(
-        onTap: () => _showEditLoanDialog(context, provider, loan),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isCompleted
-                  ? Colors.green.withValues(alpha: 0.3)
-                  : Colors.white.withValues(alpha: 0.05),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
                     loan.title,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  Text(
-                    NumberFormat.currency(
-                      symbol: currency,
-                      decimalDigits: 0,
-                    ).format(loan.totalAmount),
-                    style: TextStyle(
-                      color: loan.type == LoanType.given
-                          ? AppTheme.expense
-                          : AppTheme.income,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Paid: ${NumberFormat.currency(symbol: currency, decimalDigits: 0).format(loan.paidAmount)}',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 14,
-                    ),
-                  ),
-                  Text(
-                    'Remaining: ${NumberFormat.currency(symbol: currency, decimalDigits: 0).format(loan.remainingAmount)}',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: Colors.white.withValues(alpha: 0.1),
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    isCompleted ? Colors.green : AppTheme.primary,
-                  ),
-                  minHeight: 8,
                 ),
-              ),
-              if (loan.dueDate != null) ...[
-                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      NumberFormat.currency(
+                        symbol: currency,
+                        decimalDigits: 0,
+                      ).format(loan.totalAmount),
+                      style: TextStyle(
+                        color: loan.type == LoanType.given
+                            ? AppTheme.expense
+                            : AppTheme.income,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Delete button
+                    GestureDetector(
+                      onTap: () => _showDeleteLoanDialog(context, provider, loan),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.delete_outline,
+                          color: Colors.red.withValues(alpha: 0.7),
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 Text(
-                  'Due: ${DateFormat('MMM d, y').format(loan.dueDate!)}',
+                  'Paid: ${NumberFormat.currency(symbol: currency, decimalDigits: 0).format(loan.paidAmount)}',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 12,
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  'Remaining: ${NumberFormat.currency(symbol: currency, decimalDigits: 0).format(loan.remainingAmount)}',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 14,
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: Colors.white.withValues(alpha: 0.1),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isCompleted ? Colors.green : AppTheme.primary,
+                ),
+                minHeight: 8,
+              ),
+            ),
+            if (loan.dueDate != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Due: ${DateFormat('MMM d, y').format(loan.dueDate!)}',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  fontSize: 12,
+                ),
+              ),
             ],
-          ),
+          ],
         ),
       ),
     ).animate().fadeIn().slideX();
+  }
+
+  void _showDeleteLoanDialog(BuildContext context, MoneyProvider provider, Loan loan) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text(
+          'Delete Loan?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${loan.title}"? This action cannot be undone.',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              provider.deleteLoan(loan.id);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Loan "${loan.title}" deleted'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAddLoanDialog(BuildContext context, MoneyProvider provider) {
