@@ -47,3 +47,8 @@ app.*.map.json
 # Firebase Config
 google-services.json
 GoogleService-Info.plist
+
+# Signing
+android/key.properties
+*.jks
+*.keystore
