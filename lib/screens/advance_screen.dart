@@ -8,6 +8,7 @@ import 'category_management_screen.dart';
 import 'budget_planning_screen.dart';
 import 'loans_screen.dart';
 import 'goals_screen.dart';
+import 'currency_converter_screen.dart';
 
 class AdvanceScreen extends StatelessWidget {
   const AdvanceScreen({super.key});
@@ -37,7 +38,7 @@ class AdvanceScreen extends StatelessWidget {
           ),
         ),
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           children: [
             _buildFeatureTile(
               context,
@@ -104,6 +105,16 @@ class AdvanceScreen extends StatelessWidget {
               () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const GoalsScreen()),
+              ),
+            ),
+            _buildFeatureTile(
+              context,
+              'Currency Converter',
+              'Convert between world currencies with live rates',
+              Icons.currency_exchange_rounded,
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CurrencyConverterScreen()),
               ),
             ),
             // Add more advanced features here in the future
