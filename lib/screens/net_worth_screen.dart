@@ -22,7 +22,6 @@ class _NetWorthScreenState extends State<NetWorthScreen> {
   List<DateTime> _dates = [];
   TimeRange _selectedRange = TimeRange.all;
 
-  // Statistics
   double _highest = 0;
   double _lowest = 0;
   double _average = 0;
@@ -205,7 +204,6 @@ class _NetWorthScreenState extends State<NetWorthScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Card
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
@@ -300,7 +298,6 @@ class _NetWorthScreenState extends State<NetWorthScreen> {
 
               const SizedBox(height: 24),
 
-              // Time Range Selector
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -373,7 +370,6 @@ class _NetWorthScreenState extends State<NetWorthScreen> {
 
               const SizedBox(height: 24),
 
-              // Chart
               SizedBox(
                 height: 250,
                 child: _spots.isEmpty
@@ -546,7 +542,6 @@ class _NetWorthScreenState extends State<NetWorthScreen> {
 
               const SizedBox(height: 24),
 
-              // Statistics Section
               Text(
                 'Statistics',
                 style: TextStyle(

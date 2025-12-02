@@ -52,10 +52,7 @@ class SmsTrackingScreen extends StatelessWidget {
               Text(
                 'This will clear the blocklist and allow ${provider.blockedSmsCount} previously deleted SMS transaction${provider.blockedSmsCount > 1 ? 's' : ''} to be imported again on next sync.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
               ),
               const SizedBox(height: 24),
               Row(
@@ -94,7 +91,9 @@ class SmsTrackingScreen extends StatelessWidget {
                               children: [
                                 Icon(Icons.check_circle, color: Colors.white),
                                 const SizedBox(width: 12),
-                                const Text('Blocklist cleared! Sync to restore.'),
+                                const Text(
+                                  'Blocklist cleared! Sync to restore.',
+                                ),
                               ],
                             ),
                             backgroundColor: AppTheme.income,
@@ -170,7 +169,6 @@ class SmsTrackingScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     const Spacer(),
-                    // Icon
                     Container(
                       padding: const EdgeInsets.all(32),
                       decoration: BoxDecoration(
@@ -206,7 +204,6 @@ class SmsTrackingScreen extends StatelessWidget {
 
                     const SizedBox(height: 40),
 
-                    // Title
                     Text(
                       'SMS Transaction Tracking',
                       style: const TextStyle(
@@ -219,7 +216,6 @@ class SmsTrackingScreen extends StatelessWidget {
 
                     const SizedBox(height: 16),
 
-                    // Description
                     Text(
                       'Automatically read transaction SMS messages from banks and add them to your expenses. This feature requires SMS read permission.',
                       style: TextStyle(
@@ -232,7 +228,6 @@ class SmsTrackingScreen extends StatelessWidget {
 
                     const SizedBox(height: 32),
 
-                    // Status Badge
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -278,10 +273,10 @@ class SmsTrackingScreen extends StatelessWidget {
 
                     const SizedBox(height: 24),
 
-                    // Clear Blocklist Button (only show if there are blocked items)
                     if (provider.blockedSmsCount > 0)
                       GestureDetector(
-                        onTap: () => _showClearBlocklistDialog(context, provider),
+                        onTap: () =>
+                            _showClearBlocklistDialog(context, provider),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 20,
@@ -318,7 +313,6 @@ class SmsTrackingScreen extends StatelessWidget {
 
                     const Spacer(),
 
-                    // Action Button
                     SizedBox(
                       width: double.infinity,
                       height: 56,

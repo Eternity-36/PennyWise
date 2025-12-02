@@ -8,12 +8,12 @@ class SmsService {
 
   Future<List<Transaction>> syncMessages(String userId) async {
     try {
-      debugPrint('SmsService: Querying SMS...');
+      debugPrint('Querying SMS...');
       final messages = await _query.querySms(
         kinds: [SmsQueryKind.inbox],
         count: 100, // Limit to last 100 messages for performance
       );
-      debugPrint('SmsService: Found ${messages.length} messages');
+      debugPrint('Found ${messages.length} messages');
 
       final List<Transaction> transactions = [];
 
@@ -22,7 +22,7 @@ class SmsService {
         final transaction = _parseMessage(message, userId);
         if (transaction != null) {
           debugPrint(
-            'SmsService: Successfully parsed transaction: ${transaction.title} - ${transaction.amount}',
+            'Parsed transaction: ${transaction.title} - ${transaction.amount}',
           );
           transactions.add(transaction);
         }
@@ -30,7 +30,7 @@ class SmsService {
 
       return transactions;
     } catch (e) {
-      debugPrint('SmsService: Error reading SMS: $e');
+      debugPrint('Error reading SMS: $e');
       return [];
     }
   }

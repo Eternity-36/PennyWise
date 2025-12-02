@@ -69,7 +69,6 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: const Color(0xFF0F111A),
       body: Stack(
         children: [
-          // Background Gradient
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -86,7 +85,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // PageView
           PageView(
             controller: _pageController,
             onPageChanged: _onPageChanged,
@@ -98,7 +96,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
 
-          // Floating Navigation Bar
           Positioned(
             bottom: 32,
             left: 0,
@@ -118,7 +115,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHomePage(MoneyProvider provider) {
     return Stack(
       children: [
-        // Fixed Background Gradient
         Positioned.fill(
           child: Container(
             decoration: BoxDecoration(
@@ -135,7 +131,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
 
-        // Decorative Circle
         Positioned(
           top: -100,
           right: -100,
@@ -174,7 +169,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   const SizedBox(height: 16),
 
-                  // Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -265,7 +259,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(height: 32),
 
-                  // Balance Card
                   const BalanceCard()
                       .animate()
                       .fadeIn(delay: 300.ms)
@@ -273,7 +266,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Budget Widget (separate from card)
                   const BudgetWidget()
                       .animate()
                       .fadeIn(delay: 350.ms)
@@ -281,7 +273,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Quick Actions
                   Text(
                     'Quick Actions',
                     style: TextStyle(
@@ -369,7 +360,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(height: 8),
 
-                  // Recent Transactions
                   Text(
                     'Recent Transactions',
                     style: TextStyle(
@@ -381,7 +371,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ).animate().fadeIn(delay: 900.ms),
                   const SizedBox(height: 16),
 
-                  // Transaction List with fade-out gradient
                   SizedBox(
                     height: 400,
                     child: ShaderMask(

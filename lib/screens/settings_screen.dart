@@ -43,9 +43,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       final updateInfo = await UpdateService.checkForUpdates();
-      
+
       if (!mounted) return;
-      
+
       setState(() {
         _checkingForUpdates = false;
       });
@@ -92,7 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             biometricOnly: false,
           ),
         );
-        
+
         if (didAuthenticate) {
           await provider.setBiometricLock(true);
           if (mounted) {
@@ -118,9 +118,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await provider.setBiometricLock(false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Biometric lock disabled'),
-          ),
+          const SnackBar(content: Text('Biometric lock disabled')),
         );
       }
     }
@@ -198,7 +196,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Determine file type and import
       ImportResult result;
       final extension = file.extension?.toLowerCase() ?? '';
-      
+
       if (extension == 'csv') {
         result = await exportService.importFromCSV(
           file.path!,
@@ -225,9 +223,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result.errors.isNotEmpty 
-                  ? 'Import failed: ${result.errors.first}'
-                  : 'No transactions found in file'),
+              content: Text(
+                result.errors.isNotEmpty
+                    ? 'Import failed: ${result.errors.first}'
+                    : 'No transactions found in file',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -301,15 +301,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 16),
               const Text(
                 'Preview:',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               Container(
                 constraints: const BoxConstraints(maxHeight: 200),
                 child: ListView.builder(
                   shrinkWrap: true,
-                  itemCount: result.transactions.length > 5 
-                      ? 5 
+                  itemCount: result.transactions.length > 5
+                      ? 5
                       : result.transactions.length,
                   itemBuilder: (context, index) {
                     final t = result.transactions[index];
@@ -318,7 +321,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Row(
                         children: [
                           Icon(
-                            t.isExpense ? Icons.arrow_downward : Icons.arrow_upward,
+                            t.isExpense
+                                ? Icons.arrow_downward
+                                : Icons.arrow_upward,
                             color: t.isExpense ? Colors.red : Colors.green,
                             size: 16,
                           ),
@@ -326,7 +331,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           Expanded(
                             child: Text(
                               t.title,
-                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -360,9 +368,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
             child: Text('Import ${result.transactions.length}'),
           ),
         ],
@@ -373,7 +379,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<MoneyProvider>(context);
-    
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
@@ -385,25 +391,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         children: [
-          // Updates Section (at the top)
           _buildUpdateTile(),
           const SizedBox(height: 24),
-          
-          // Security Section
+
           _buildSection('Security'),
           _buildSwitchTile(
             'Biometric Lock',
-            _canCheckBiometrics 
+            _canCheckBiometrics
                 ? 'Require fingerprint or face to open app'
                 : 'Not available on this device',
             Icons.fingerprint,
             provider.biometricLockEnabled,
-            _canCheckBiometrics 
+            _canCheckBiometrics
                 ? (value) => _toggleBiometricLock(value, provider)
                 : null,
           ),
           const SizedBox(height: 24),
-          
+
           _buildSection('Data'),
           _buildActionTile(
             'Import Transactions',
@@ -460,9 +464,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         decoration: BoxDecoration(
           color: AppTheme.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppTheme.primary.withValues(alpha: 0.3),
-          ),
+          border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
@@ -508,10 +510,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               )
             else
-              Icon(
-                Icons.refresh,
-                color: AppTheme.primary,
-              ),
+              Icon(Icons.refresh, color: AppTheme.primary),
           ],
         ),
       ),

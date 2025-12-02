@@ -39,8 +39,7 @@ class AccountService {
   CollectionReference<Map<String, dynamic>> _getAccountSubcollection(
     String accountId,
     String subcollection,
-  ) =>
-      _accountsCollection.doc(accountId).collection(subcollection);
+  ) => _accountsCollection.doc(accountId).collection(subcollection);
 
   // ============== ACCOUNT CRUD ==============
 
@@ -52,7 +51,7 @@ class AccountService {
     bool showSmsTransactions = false,
   }) async {
     final accountId = DateTime.now().millisecondsSinceEpoch.toString();
-    
+
     final account = Account(
       id: accountId,
       name: name,
@@ -68,7 +67,9 @@ class AccountService {
     // (Firestore doesn't create empty collections, but we don't need to add placeholders)
     // The subcollections will be created when first document is added
 
-    debugPrint('✅ Account "$name" created with ID: $accountId (SMS: $showSmsTransactions)');
+    debugPrint(
+      'Account "$name" created: $accountId (SMS: $showSmsTransactions)',
+    );
     return account;
   }
 
@@ -110,11 +111,17 @@ class AccountService {
 
     // Delete the account document
     await _accountsCollection.doc(accountId).delete();
-    debugPrint('🗑️ Account $accountId deleted');
+    debugPrint('Account $accountId deleted');
   }
 
-  Future<void> _deleteSubcollection(String accountId, String subcollection) async {
-    final snapshot = await _getAccountSubcollection(accountId, subcollection).get();
+  Future<void> _deleteSubcollection(
+    String accountId,
+    String subcollection,
+  ) async {
+    final snapshot = await _getAccountSubcollection(
+      accountId,
+      subcollection,
+    ).get();
     for (final doc in snapshot.docs) {
       await doc.reference.delete();
     }
@@ -137,40 +144,49 @@ class AccountService {
 
   /// Get transactions for a specific account
   Future<List<Transaction>> getTransactions(String accountId) async {
-    final snapshot = await _getAccountSubcollection(accountId, 'transactions')
-        .orderBy('date', descending: true)
-        .get();
-    return snapshot.docs.map((doc) => Transaction.fromJson(doc.data())).toList();
+    final snapshot = await _getAccountSubcollection(
+      accountId,
+      'transactions',
+    ).orderBy('date', descending: true).get();
+    return snapshot.docs
+        .map((doc) => Transaction.fromJson(doc.data()))
+        .toList();
   }
 
   /// Add transaction to account (excludes SMS transactions)
   Future<void> addTransaction(String accountId, Transaction transaction) async {
     // Don't sync SMS transactions to Firebase
     if (transaction.smsBody != null && transaction.smsBody!.isNotEmpty) {
-      debugPrint('⚠️ Skipping SMS transaction sync to Firebase');
+      debugPrint('Skipping SMS transaction sync to Firebase');
       return;
     }
-    await _getAccountSubcollection(accountId, 'transactions')
-        .doc(transaction.id)
-        .set(transaction.toJson());
+    await _getAccountSubcollection(
+      accountId,
+      'transactions',
+    ).doc(transaction.id).set(transaction.toJson());
   }
 
   /// Update transaction in account
-  Future<void> updateTransaction(String accountId, Transaction transaction) async {
+  Future<void> updateTransaction(
+    String accountId,
+    Transaction transaction,
+  ) async {
     // Don't sync SMS transactions to Firebase
     if (transaction.smsBody != null && transaction.smsBody!.isNotEmpty) {
       return;
     }
-    await _getAccountSubcollection(accountId, 'transactions')
-        .doc(transaction.id)
-        .update(transaction.toJson());
+    await _getAccountSubcollection(
+      accountId,
+      'transactions',
+    ).doc(transaction.id).update(transaction.toJson());
   }
 
   /// Delete transaction from account
   Future<void> deleteTransaction(String accountId, String transactionId) async {
-    await _getAccountSubcollection(accountId, 'transactions')
-        .doc(transactionId)
-        .delete();
+    await _getAccountSubcollection(
+      accountId,
+      'transactions',
+    ).doc(transactionId).delete();
   }
 
   // ============== BUDGETS ==============
@@ -184,9 +200,10 @@ class AccountService {
   /// Add or update budget
   Future<void> saveBudget(String accountId, Budget budget) async {
     final budgetId = '${budget.year}_${budget.month}';
-    await _getAccountSubcollection(accountId, 'budgets')
-        .doc(budgetId)
-        .set(budget.toJson());
+    await _getAccountSubcollection(
+      accountId,
+      'budgets',
+    ).doc(budgetId).set(budget.toJson());
   }
 
   /// Delete budget
@@ -205,16 +222,18 @@ class AccountService {
 
   /// Add loan to account
   Future<void> addLoan(String accountId, Loan loan) async {
-    await _getAccountSubcollection(accountId, 'loans')
-        .doc(loan.id)
-        .set(_loanToJson(loan));
+    await _getAccountSubcollection(
+      accountId,
+      'loans',
+    ).doc(loan.id).set(_loanToJson(loan));
   }
 
   /// Update loan
   Future<void> updateLoan(String accountId, Loan loan) async {
-    await _getAccountSubcollection(accountId, 'loans')
-        .doc(loan.id)
-        .update(_loanToJson(loan));
+    await _getAccountSubcollection(
+      accountId,
+      'loans',
+    ).doc(loan.id).update(_loanToJson(loan));
   }
 
   /// Delete loan
@@ -258,16 +277,18 @@ class AccountService {
 
   /// Add goal to account
   Future<void> addGoal(String accountId, Goal goal) async {
-    await _getAccountSubcollection(accountId, 'goals')
-        .doc(goal.id)
-        .set(_goalToJson(goal));
+    await _getAccountSubcollection(
+      accountId,
+      'goals',
+    ).doc(goal.id).set(_goalToJson(goal));
   }
 
   /// Update goal
   Future<void> updateGoal(String accountId, Goal goal) async {
-    await _getAccountSubcollection(accountId, 'goals')
-        .doc(goal.id)
-        .update(_goalToJson(goal));
+    await _getAccountSubcollection(
+      accountId,
+      'goals',
+    ).doc(goal.id).update(_goalToJson(goal));
   }
 
   /// Delete goal
@@ -293,7 +314,9 @@ class AccountService {
       title: json['title'],
       targetAmount: (json['targetAmount'] as num).toDouble(),
       savedAmount: (json['savedAmount'] as num?)?.toDouble() ?? 0.0,
-      deadline: json['deadline'] != null ? DateTime.parse(json['deadline']) : null,
+      deadline: json['deadline'] != null
+          ? DateTime.parse(json['deadline'])
+          : null,
       iconCode: json['iconCode'],
       colorValue: json['colorValue'],
     );
@@ -308,21 +331,26 @@ class AccountService {
         .orderBy('createdAt')
         .snapshots()
         .listen((snapshot) {
-      final accounts = snapshot.docs.map((doc) => Account.fromJson(doc.data())).toList();
-      onAccountsChanged?.call(accounts);
-    });
+          final accounts = snapshot.docs
+              .map((doc) => Account.fromJson(doc.data()))
+              .toList();
+          onAccountsChanged?.call(accounts);
+        });
   }
 
   /// Start listening to transactions for a specific account
   void startTransactionsSync(String accountId) {
     _transactionsSubscription?.cancel();
-    _transactionsSubscription = _getAccountSubcollection(accountId, 'transactions')
-        .orderBy('date', descending: true)
-        .snapshots()
-        .listen((snapshot) {
-      final transactions = snapshot.docs.map((doc) => Transaction.fromJson(doc.data())).toList();
-      onTransactionsChanged?.call(transactions);
-    });
+    _transactionsSubscription =
+        _getAccountSubcollection(
+          accountId,
+          'transactions',
+        ).orderBy('date', descending: true).snapshots().listen((snapshot) {
+          final transactions = snapshot.docs
+              .map((doc) => Transaction.fromJson(doc.data()))
+              .toList();
+          onTransactionsChanged?.call(transactions);
+        });
   }
 
   /// Start listening to budgets for a specific account
@@ -331,9 +359,11 @@ class AccountService {
     _budgetsSubscription = _getAccountSubcollection(accountId, 'budgets')
         .snapshots()
         .listen((snapshot) {
-      final budgets = snapshot.docs.map((doc) => Budget.fromJson(doc.data())).toList();
-      onBudgetsChanged?.call(budgets);
-    });
+          final budgets = snapshot.docs
+              .map((doc) => Budget.fromJson(doc.data()))
+              .toList();
+          onBudgetsChanged?.call(budgets);
+        });
   }
 
   /// Start listening to loans for a specific account
@@ -342,9 +372,11 @@ class AccountService {
     _loansSubscription = _getAccountSubcollection(accountId, 'loans')
         .snapshots()
         .listen((snapshot) {
-      final loans = snapshot.docs.map((doc) => _loanFromJson(doc.data())).toList();
-      onLoansChanged?.call(loans);
-    });
+          final loans = snapshot.docs
+              .map((doc) => _loanFromJson(doc.data()))
+              .toList();
+          onLoansChanged?.call(loans);
+        });
   }
 
   /// Start listening to goals for a specific account
@@ -353,9 +385,11 @@ class AccountService {
     _goalsSubscription = _getAccountSubcollection(accountId, 'goals')
         .snapshots()
         .listen((snapshot) {
-      final goals = snapshot.docs.map((doc) => _goalFromJson(doc.data())).toList();
-      onGoalsChanged?.call(goals);
-    });
+          final goals = snapshot.docs
+              .map((doc) => _goalFromJson(doc.data()))
+              .toList();
+          onGoalsChanged?.call(goals);
+        });
   }
 
   /// Start all sync listeners for an account
@@ -365,7 +399,7 @@ class AccountService {
     startBudgetsSync(accountId);
     startLoansSync(accountId);
     startGoalsSync(accountId);
-    debugPrint('🔄 Started real-time sync for account: $accountId');
+    debugPrint('Started real-time sync for account: $accountId');
   }
 
   /// Stop all sync listeners
@@ -375,7 +409,7 @@ class AccountService {
     _budgetsSubscription?.cancel();
     _loansSubscription?.cancel();
     _goalsSubscription?.cancel();
-    debugPrint('⏹️ Stopped all real-time sync');
+    debugPrint('Stopped all real-time sync');
   }
 
   /// Dispose and clean up
@@ -384,9 +418,11 @@ class AccountService {
   }
 
   /// Initialize default account if none exists
-  Future<Account> initializeDefaultAccount({bool showSmsTransactions = true}) async {
+  Future<Account> initializeDefaultAccount({
+    bool showSmsTransactions = true,
+  }) async {
     final accounts = await getAccounts();
-    
+
     if (accounts.isEmpty) {
       // Create default "Personal" account with SMS enabled by default
       final defaultAccount = await createAccount(
@@ -395,31 +431,34 @@ class AccountService {
         isDefault: true,
         showSmsTransactions: showSmsTransactions,
       );
-      debugPrint('✅ Created default Personal account (SMS: $showSmsTransactions)');
-      
+      debugPrint(
+        'Created default Personal account (SMS: $showSmsTransactions)',
+      );
+
       // Migrate all existing data from old paths to new account
       await _migrateOldTransactions(defaultAccount.id);
       await _migrateOldLoans(defaultAccount.id);
       await _migrateOldGoals(defaultAccount.id);
       await _migrateOldBudgets(defaultAccount.id);
-      
+
       return defaultAccount;
     }
-    
+
     // Get the default account or first account
     final defaultAccount = accounts.firstWhere(
       (a) => a.isDefault,
       orElse: () => accounts.first,
     );
-    
+
     // Fix: If the default Personal account has SMS disabled, enable it
     // This handles accounts created before showSmsTransactions was added
-    if (defaultAccount.name == 'Personal' && !defaultAccount.showSmsTransactions) {
+    if (defaultAccount.name == 'Personal' &&
+        !defaultAccount.showSmsTransactions) {
       defaultAccount.showSmsTransactions = true;
       await updateAccount(defaultAccount);
-      debugPrint('✅ Enabled SMS transactions for existing Personal account');
+      debugPrint('Enabled SMS transactions for existing Personal account');
     }
-    
+
     return defaultAccount;
   }
 
@@ -429,26 +468,33 @@ class AccountService {
       // Get transactions from old path
       final oldTransactionsRef = _userDoc.collection('transactions');
       final oldSnapshot = await oldTransactionsRef.get();
-      
+
       if (oldSnapshot.docs.isEmpty) {
-        debugPrint('📦 No old transactions to migrate');
+        debugPrint('No old transactions to migrate');
         return;
       }
 
-      debugPrint('📦 Migrating ${oldSnapshot.docs.length} transactions to account $accountId...');
-      
-      final newTransactionsRef = _getAccountSubcollection(accountId, 'transactions');
-      
+      debugPrint(
+        'Migrating ${oldSnapshot.docs.length} transactions to account $accountId...',
+      );
+
+      final newTransactionsRef = _getAccountSubcollection(
+        accountId,
+        'transactions',
+      );
+
       // Migrate each transaction
       for (final doc in oldSnapshot.docs) {
         final data = doc.data();
         data['accountId'] = accountId; // Update accountId
         await newTransactionsRef.doc(doc.id).set(data);
       }
-      
-      debugPrint('✅ Migrated ${oldSnapshot.docs.length} transactions successfully');
+
+      debugPrint(
+        'Migrated ${oldSnapshot.docs.length} transactions successfully',
+      );
     } catch (e) {
-      debugPrint('❌ Error migrating transactions: $e');
+      debugPrint('Error migrating transactions: $e');
     }
   }
 
@@ -457,25 +503,27 @@ class AccountService {
     try {
       final oldLoansRef = _userDoc.collection('loans');
       final oldSnapshot = await oldLoansRef.get();
-      
+
       if (oldSnapshot.docs.isEmpty) {
-        debugPrint('📦 No old loans to migrate');
+        debugPrint('No old loans to migrate');
         return;
       }
 
-      debugPrint('📦 Migrating ${oldSnapshot.docs.length} loans to account $accountId...');
-      
+      debugPrint(
+        'Migrating ${oldSnapshot.docs.length} loans to account $accountId...',
+      );
+
       final newLoansRef = _getAccountSubcollection(accountId, 'loans');
-      
+
       for (final doc in oldSnapshot.docs) {
         final data = doc.data();
         data['accountId'] = accountId;
         await newLoansRef.doc(doc.id).set(data);
       }
-      
-      debugPrint('✅ Migrated ${oldSnapshot.docs.length} loans successfully');
+
+      debugPrint('Migrated ${oldSnapshot.docs.length} loans successfully');
     } catch (e) {
-      debugPrint('❌ Error migrating loans: $e');
+      debugPrint('Error migrating loans: $e');
     }
   }
 
@@ -484,25 +532,27 @@ class AccountService {
     try {
       final oldGoalsRef = _userDoc.collection('goals');
       final oldSnapshot = await oldGoalsRef.get();
-      
+
       if (oldSnapshot.docs.isEmpty) {
-        debugPrint('📦 No old goals to migrate');
+        debugPrint('No old goals to migrate');
         return;
       }
 
-      debugPrint('📦 Migrating ${oldSnapshot.docs.length} goals to account $accountId...');
-      
+      debugPrint(
+        'Migrating ${oldSnapshot.docs.length} goals to account $accountId...',
+      );
+
       final newGoalsRef = _getAccountSubcollection(accountId, 'goals');
-      
+
       for (final doc in oldSnapshot.docs) {
         final data = doc.data();
         data['accountId'] = accountId;
         await newGoalsRef.doc(doc.id).set(data);
       }
-      
-      debugPrint('✅ Migrated ${oldSnapshot.docs.length} goals successfully');
+
+      debugPrint('Migrated ${oldSnapshot.docs.length} goals successfully');
     } catch (e) {
-      debugPrint('❌ Error migrating goals: $e');
+      debugPrint('Error migrating goals: $e');
     }
   }
 
@@ -511,25 +561,27 @@ class AccountService {
     try {
       final oldBudgetsRef = _userDoc.collection('budgets');
       final oldSnapshot = await oldBudgetsRef.get();
-      
+
       if (oldSnapshot.docs.isEmpty) {
-        debugPrint('📦 No old budgets to migrate');
+        debugPrint('No old budgets to migrate');
         return;
       }
 
-      debugPrint('📦 Migrating ${oldSnapshot.docs.length} budgets to account $accountId...');
-      
+      debugPrint(
+        'Migrating ${oldSnapshot.docs.length} budgets to account $accountId...',
+      );
+
       final newBudgetsRef = _getAccountSubcollection(accountId, 'budgets');
-      
+
       for (final doc in oldSnapshot.docs) {
         final data = doc.data();
         data['accountId'] = accountId;
         await newBudgetsRef.doc(doc.id).set(data);
       }
-      
-      debugPrint('✅ Migrated ${oldSnapshot.docs.length} budgets successfully');
+
+      debugPrint('Migrated ${oldSnapshot.docs.length} budgets successfully');
     } catch (e) {
-      debugPrint('❌ Error migrating budgets: $e');
+      debugPrint('Error migrating budgets: $e');
     }
   }
 }
