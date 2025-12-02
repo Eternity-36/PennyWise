@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:csv/csv.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
@@ -161,45 +162,55 @@ class ExportService {
       }
 
       final pdf = pw.Document();
+      
+      // Load font that supports currency symbols
+      final fontData = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
+      final ttf = pw.Font.ttf(fontData);
+      
       final currencyFormat = NumberFormat.currency(
         symbol: currencySymbol,
         decimalDigits: 2,
       );
 
       pdf.addPage(
-        pw.Page(
+        pw.MultiPage(
+          theme: pw.ThemeData.withFont(
+            base: ttf,
+            bold: ttf,
+          ),
           build: (pw.Context context) {
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  'PennyWise Transaction Report',
-                  style: pw.TextStyle(
-                    fontSize: 24,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
+            return [
+              pw.Text(
+                'PennyWise Transaction Report',
+                style: pw.TextStyle(
+                  fontSize: 24,
+                  fontWeight: pw.FontWeight.bold,
+                  font: ttf,
                 ),
-                pw.SizedBox(height: 20),
-                pw.Text(
-                  'Generated: ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}',
-                ),
-                pw.SizedBox(height: 20),
-                pw.TableHelper.fromTextArray(
-                  headers: ['Date', 'Title', 'Category', 'Amount', 'Type'],
-                  data: transactions
-                      .map(
-                        (t) => [
-                          DateFormat('yyyy-MM-dd').format(t.date),
-                          t.title,
-                          t.category,
-                          currencyFormat.format(t.amount),
-                          t.isExpense ? 'Expense' : 'Income',
-                        ],
-                      )
-                      .toList(),
-                ),
-              ],
-            );
+              ),
+              pw.SizedBox(height: 20),
+              pw.Text(
+                'Generated: ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}',
+                style: pw.TextStyle(font: ttf),
+              ),
+              pw.SizedBox(height: 20),
+              pw.TableHelper.fromTextArray(
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, font: ttf),
+                cellStyle: pw.TextStyle(font: ttf),
+                headers: ['Date', 'Title', 'Category', 'Amount', 'Type'],
+                data: transactions
+                    .map(
+                      (t) => [
+                        DateFormat('yyyy-MM-dd').format(t.date),
+                        t.title,
+                        t.category,
+                        currencyFormat.format(t.amount),
+                        t.isExpense ? 'Expense' : 'Income',
+                      ],
+                    )
+                    .toList(),
+              ),
+            ];
           },
         ),
       );

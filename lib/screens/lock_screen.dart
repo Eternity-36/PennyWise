@@ -57,10 +57,18 @@ class _LockScreenState extends State<LockScreen> with WidgetsBindingObserver {
   @override
   void didUpdateWidget(LockScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // If lock was disabled, unlock
     if (!widget.isEnabled && _isLocked) {
       setState(() {
         _isLocked = false;
       });
+    }
+    // If lock was just enabled (e.g., settings loaded after cold start), lock and authenticate
+    if (widget.isEnabled && !oldWidget.isEnabled) {
+      setState(() {
+        _isLocked = true;
+      });
+      _authenticate();
     }
   }
 
