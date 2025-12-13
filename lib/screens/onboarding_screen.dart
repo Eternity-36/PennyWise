@@ -45,8 +45,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           final nameLower = currency.name.toLowerCase();
           final queryLower = query.toLowerCase();
           return countryLower.contains(queryLower) ||
-                 codeLower.contains(queryLower) ||
-                 nameLower.contains(queryLower);
+              codeLower.contains(queryLower) ||
+              nameLower.contains(queryLower);
         }).toList();
       }
     });
@@ -65,7 +65,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       final userCredential = await _authService.signInWithGoogle();
       if (userCredential != null && mounted) {
         final user = userCredential.user!;
-        
+
         // Always use the newly selected currency from onboarding
         // This overwrites any existing Firebase profile currency
         await _initializeAndNavigate(
@@ -199,6 +199,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 subtitle: 'Keep track of every penny you spend with ease.',
                 icon: Icons.account_balance_wallet_outlined,
               ),
+              _buildSwipeTutorialPage(),
               _buildCurrencyPage(),
               _buildSetupPage(),
             ],
@@ -211,7 +212,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             right: 0,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(3, (index) {
+              children: List.generate(4, (index) {
                 return AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -290,6 +291,206 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
+  Widget _buildSwipeTutorialPage() {
+    return Padding(
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Icon at top
+          Icon(
+            Icons.swipe,
+            size: 80,
+            color: AppTheme.primary,
+          ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
+
+          const SizedBox(height: 32),
+
+          const Text(
+            'Swipe to Manage\nTransactions',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              height: 1.2,
+            ),
+          ).animate().fadeIn().slideY(begin: 0.3, end: 0),
+
+          const SizedBox(height: 12),
+
+          Text(
+            'On the Home Screen, swipe any transaction\nto quickly edit or delete it',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white.withValues(alpha: 0.7),
+            ),
+          ).animate().fadeIn(delay: 200.ms),
+
+          const SizedBox(height: 32),
+
+          // Home screen indicator
+          Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(
+                    color: AppTheme.primary.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.home_outlined,
+                      color: AppTheme.primary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Home Screen Transaction List',
+                      style: TextStyle(
+                        color: AppTheme.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+              .animate()
+              .fadeIn(delay: 250.ms)
+              .scale(begin: const Offset(0.9, 0.9), end: const Offset(1, 1)),
+
+          const SizedBox(height: 24),
+
+          // Swipe demonstration card
+          Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    // Swipe Right - Edit
+                    _buildSwipeHint(
+                          icon: Icons.edit_outlined,
+                          iconColor: Colors.blue,
+                          direction: 'Swipe Right',
+                          action: 'Edit Transaction',
+                          arrowIcon: Icons.arrow_forward,
+                        )
+                        .animate()
+                        .fadeIn(delay: 400.ms)
+                        .slideX(begin: -0.3, end: 0),
+
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Divider(color: Colors.white12, height: 1),
+                    ),
+
+                    // Swipe Left - Delete
+                    _buildSwipeHint(
+                          icon: Icons.delete_outline,
+                          iconColor: Colors.redAccent,
+                          direction: 'Swipe Left',
+                          action: 'Delete Transaction',
+                          arrowIcon: Icons.arrow_back,
+                        )
+                        .animate()
+                        .fadeIn(delay: 600.ms)
+                        .slideX(begin: 0.3, end: 0),
+                  ],
+                ),
+              )
+              .animate()
+              .fadeIn(delay: 300.ms)
+              .scale(begin: const Offset(0.9, 0.9), end: const Offset(1, 1)),
+
+          const SizedBox(height: 48),
+
+          ElevatedButton(
+            onPressed: _nextPage,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.surface,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+            child: const Text(
+              'GOT IT',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ).animate().fadeIn(delay: 800.ms),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSwipeHint({
+    required IconData icon,
+    required Color iconColor,
+    required String direction,
+    required String action,
+    required IconData arrowIcon,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: iconColor, size: 28),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(arrowIcon, color: Colors.white54, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    direction,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                action,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildCurrencyPage() {
     return Padding(
       padding: const EdgeInsets.all(24.0),
@@ -322,7 +523,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ).animate().fadeIn(delay: 200.ms),
           const SizedBox(height: 20),
-          
+
           // Search Field
           TextField(
             controller: _searchController,
@@ -330,28 +531,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               hintText: 'Search country or currency...',
-              hintStyle: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
-              ),
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
               filled: true,
               fillColor: AppTheme.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
               ),
-              prefixIcon: const Icon(
-                Icons.search,
-                color: Colors.white70,
-              ),
+              prefixIcon: const Icon(Icons.search, color: Colors.white70),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 20,
                 vertical: 14,
               ),
             ),
           ).animate().fadeIn(delay: 300.ms),
-          
+
           const SizedBox(height: 16),
-          
+
           // Currency List
           Expanded(
             child: Container(
@@ -365,7 +561,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 itemBuilder: (context, index) {
                   final currency = _filteredCurrencies[index];
                   final isSelected = currency.code == _selectedCurrency.code;
-                  
+
                   return InkWell(
                     onTap: () {
                       setState(() {
@@ -457,9 +653,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ).animate().fadeIn(delay: 400.ms),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Selected Currency Display & Next Button
           Container(
             padding: const EdgeInsets.all(16),
@@ -522,7 +718,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 60), // Space for page indicators
         ],
       ),

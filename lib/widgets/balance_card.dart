@@ -19,13 +19,189 @@ class BalanceCard extends StatefulWidget {
 }
 
 class _BalanceCardState extends State<BalanceCard> {
-  final PageController _pageController = PageController();
-  int _currentPage = 0;
-
   @override
   void dispose() {
-    _pageController.dispose();
     super.dispose();
+  }
+
+  void _showAccountSwitcherBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (bottomSheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final provider = Provider.of<MoneyProvider>(context);
+          final accounts = provider.accounts;
+          final activeAccount = provider.activeAccount;
+          
+          return Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                // Header
+                Row(
+                  children: [
+                    const Text(
+                      'Select Account',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showCreateAccountDialog(context);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.add, color: AppTheme.primary, size: 18),
+                            const SizedBox(width: 4),
+                            Text(
+                              'New',
+                              style: TextStyle(
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                
+                // Account list
+                ...accounts.map((account) {
+                  final isActive = activeAccount?.id == account.id;
+                  return GestureDetector(
+                    onTap: () async {
+                      if (!isActive) {
+                        await provider.switchAccount(account.id);
+                        setSheetState(() {}); // Rebuild bottom sheet
+                      }
+                    },
+                    onLongPress: () {
+                      Navigator.pop(context);
+                      _showAccountOptionsDialog(context, account);
+                    },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? account.color.withValues(alpha: 0.2)
+                        : Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isActive
+                          ? account.color
+                          : Colors.white.withValues(alpha: 0.1),
+                      width: isActive ? 2 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: account.color.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.account_balance_wallet,
+                          color: account.color,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              account.name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (account.showSmsTransactions)
+                              Text(
+                                'SMS enabled',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                  fontSize: 12,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (isActive)
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: account.color,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        )
+                      else
+                        Icon(
+                          Icons.chevron_right,
+                          color: Colors.white.withValues(alpha: 0.3),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            
+            const SizedBox(height: 8),
+            Text(
+              'Long press an account for more options',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      );
+        },
+      ),
+    );
   }
 
   void _showCreateAccountDialog(BuildContext context) {
@@ -169,16 +345,6 @@ class _BalanceCardState extends State<BalanceCard> {
                   );
                   
                   if (account != null && mounted) {
-                    // Navigate to the new account card
-                    Future.delayed(const Duration(milliseconds: 100), () {
-                      if (_pageController.hasClients) {
-                        _pageController.animateToPage(
-                          provider.accounts.length - 1,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      }
-                    });
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Account "${nameController.text.trim()}" created!'),
@@ -212,41 +378,9 @@ class _BalanceCardState extends State<BalanceCard> {
     return colors[index % colors.length];
   }
 
-  void _switchToAccount(BuildContext context, Account account) async {
-    final provider = Provider.of<MoneyProvider>(context, listen: false);
-    
-    await provider.switchAccount(account.id);
-    
-    // Navigate to the main card (page 0)
-    if (_pageController.hasClients) {
-      _pageController.animateToPage(
-        0,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Text('Switched to "${account.name}"'),
-            ],
-          ),
-          backgroundColor: AppTheme.primary,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<MoneyProvider>(context);
-    final accounts = provider.accounts;
     final activeAccount = provider.activeAccount;
     
     // Show skeleton loading while data is loading
@@ -262,117 +396,15 @@ class _BalanceCardState extends State<BalanceCard> {
       return _buildMainCardWithoutAccount(context, provider);
     }
     
-    // For logged-in users, always show swipeable interface
-    // If accounts are still loading, show loading state or at least the add card
-    if (accounts.isEmpty || activeAccount == null) {
-      // Show swipeable with just the "Add Account" card while loading
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: 200,
-            child: _buildAddAccountCard(context),
-          ),
-          const SizedBox(height: 12),
-          // Single dot indicator
-          Container(
-            width: 20,
-            height: 6,
-            decoration: BoxDecoration(
-              color: AppTheme.primary,
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ),
-        ],
-      );
+    // For logged-in users with no accounts yet, show card with option to create
+    if (activeAccount == null) {
+      return _buildMainCardWithoutAccount(context, provider);
     }
 
-    // Get other accounts (not active)
-    final otherAccounts = accounts.where((a) => a.id != activeAccount.id).toList();
-    final totalPages = 1 + otherAccounts.length + 1; // active + others + add card
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // PageView for cards
-            SizedBox(
-              height: 200,
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: (index) {
-                  setState(() {
-                    _currentPage = index;
-                  });
-                },
-                itemCount: totalPages,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    // Main card (active account)
-                    return _buildMainCard(context, provider, activeAccount);
-                  } else if (index <= otherAccounts.length) {
-                    // Other account cards
-                    return _buildAccountCard(context, otherAccounts[index - 1]);
-                  }
-                  // Add new account card (last page)
-                  return _buildAddAccountCard(context);
-                },
-              ),
-            ),
-
-            // Swipe hint arrow (only on first page)
-            if (_currentPage == 0 && accounts.length > 1 || _currentPage == 0)
-              Positioned(
-                right: 16,
-                top: 80,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.chevron_left,
-                      color: Colors.white.withValues(alpha: 0.4),
-                      size: 24,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Swipe',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.4),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-              .animate(onPlay: (controller) => controller.repeat(reverse: true))
-              .fadeIn(duration: 800.ms)
-              .slideX(begin: 0.2, end: 0, duration: 1500.ms),
-          ],
-        ),
-
-        // Page indicator dots (below the card)
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            totalPages,
-            (index) => Container(
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: _currentPage == index ? 20 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: _currentPage == index
-                    ? AppTheme.primary
-                    : Colors.white.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-          ),
-        ),
-      ],
+    // Show the active account card with tap to switch
+    return GestureDetector(
+      onTap: () => _showAccountSwitcherBottomSheet(context),
+      child: _buildMainCard(context, provider, activeAccount),
     );
   }
 
@@ -517,12 +549,15 @@ class _BalanceCardState extends State<BalanceCard> {
   }
 
   Widget _buildMainCard(BuildContext context, MoneyProvider provider, Account account) {
+    final hasMultipleAccounts = provider.accounts.length > 1;
+    
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
         child: Container(
           width: double.infinity,
+          height: 200,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -549,13 +584,45 @@ class _BalanceCardState extends State<BalanceCard> {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
             children: [
               // Top Row: Chip and Card Name
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildChip(),
+                  Row(
+                    children: [
+                      _buildChip(),
+                      if (hasMultipleAccounts) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.swap_horiz,
+                                color: Colors.white.withValues(alpha: 0.6),
+                                size: 14,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Tap',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                   GestureDetector(
                     onTap: () => _showCardNameDialog(context, provider),
                     child: Row(
@@ -697,169 +764,6 @@ class _BalanceCardState extends State<BalanceCard> {
         ),
       ),
     ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.3, end: 0);
-  }
-
-  Widget _buildAccountCard(BuildContext context, Account account) {
-    final provider = Provider.of<MoneyProvider>(context, listen: false);
-    
-    return GestureDetector(
-      onLongPress: () => _showAccountOptionsDialog(context, account),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  account.color.withValues(alpha: 0.3),
-                  const Color(0xFF1A1F38).withValues(alpha: 0.6),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.15),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 25,
-                  spreadRadius: -5,
-                  offset: const Offset(0, 15),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Top Row: Chip and Account Name with options
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildChip(),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: account.color.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            account.name.toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Options button (delete, etc.)
-                        GestureDetector(
-                          onTap: () => _showAccountOptionsDialog(context, account),
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              Icons.more_vert,
-                              color: Colors.white.withValues(alpha: 0.6),
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const Spacer(),
-
-                // Balance Section (placeholder - balance shown when switched)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Total Balance',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 13,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Switch to view',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white.withValues(alpha: 0.5),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-
-                // Bottom Row: Switch Button
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'CARD HOLDER',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          provider.userName.toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Switch Button
-                    ElevatedButton.icon(
-                      onPressed: () => _switchToAccount(context, account),
-                      icon: const Icon(Icons.swap_horiz, size: 18),
-                      label: const Text('Switch'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: account.color,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ).animate().fadeIn(duration: 600.ms).scale(begin: const Offset(0.95, 0.95));
   }
 
   void _showAccountOptionsDialog(BuildContext context, Account account) {
@@ -1059,14 +963,6 @@ class _BalanceCardState extends State<BalanceCard> {
               
               if (mounted) {
                 if (success) {
-                  // Navigate back to first page
-                  if (_pageController.hasClients) {
-                    _pageController.animateToPage(
-                      0,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    );
-                  }
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Account "${account.name}" deleted'),
@@ -1092,79 +988,6 @@ class _BalanceCardState extends State<BalanceCard> {
         ],
       ),
     );
-  }
-
-  Widget _buildAddAccountCard(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _showCreateAccountDialog(context),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              const Color(0xFF1A1F38).withValues(alpha: 0.5),
-              const Color(0xFF2D3459).withValues(alpha: 0.5),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: AppTheme.primary.withValues(alpha: 0.3),
-            width: 2,
-            style: BorderStyle.solid,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.primary.withValues(alpha: 0.2),
-                  border: Border.all(
-                    color: AppTheme.primary.withValues(alpha: 0.5),
-                    width: 2,
-                  ),
-                ),
-                child: Icon(
-                  Icons.add,
-                  color: AppTheme.primary,
-                  size: 36,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Add New Account',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Tap to create',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.5),
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ).animate().fadeIn(duration: 600.ms).scale(begin: const Offset(0.95, 0.95));
   }
 
   void _showCardNameDialog(BuildContext context, MoneyProvider provider) {

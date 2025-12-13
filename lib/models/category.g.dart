@@ -22,13 +22,15 @@ class CategoryAdapter extends TypeAdapter<Category> {
       iconCode: fields[2] as int,
       colorValue: fields[3] as int,
       isCustom: fields[4] as bool,
+      parentId: fields[5] as String?,
+      subcategoryIds: (fields[6] as List?)?.cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Category obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -38,7 +40,11 @@ class CategoryAdapter extends TypeAdapter<Category> {
       ..writeByte(3)
       ..write(obj.colorValue)
       ..writeByte(4)
-      ..write(obj.isCustom);
+      ..write(obj.isCustom)
+      ..writeByte(5)
+      ..write(obj.parentId)
+      ..writeByte(6)
+      ..write(obj.subcategoryIds);
   }
 
   @override

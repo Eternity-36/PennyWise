@@ -75,8 +75,23 @@ class _TransactionListState extends State<TransactionList> {
       if (providerIds.difference(localIds).isNotEmpty) {
         return true;
       }
+      // Check if any existing transaction has been updated
+      for (final providerTx in providerTransactions) {
+        final localTx = _localTransactions.where((t) => t.id == providerTx.id).firstOrNull;
+        if (localTx != null && _hasTransactionChanged(localTx, providerTx)) {
+          return true;
+        }
+      }
     }
     return false;
+  }
+
+  bool _hasTransactionChanged(Transaction local, Transaction provider) {
+    return local.title != provider.title ||
+           local.amount != provider.amount ||
+           local.category != provider.category ||
+           local.isExpense != provider.isExpense ||
+           local.date != provider.date;
   }
 
   void _removeTransaction(int index, Transaction transaction) {
@@ -312,47 +327,6 @@ class _TransactionListState extends State<TransactionList> {
                 begin: _animatedItems.contains(transaction.id) ? 1 : 0,
                 delay: _animatedItems.contains(transaction.id) ? Duration.zero : (100 * index).ms,
               ),
-
-          // Swipe hint indicators (only on first transaction)
-          if (index == 0) ...[
-            // Left chevron hint
-            Positioned(
-                  left: -8,
-                  top: 0,
-                  bottom: 12,
-                  child: Center(
-                    child: Icon(
-                      Icons.chevron_right,
-                      color: AppTheme.primary.withValues(alpha: 0.7),
-                      size: 32,
-                    ),
-                  ),
-                )
-                .animate(
-                  onPlay: (controller) => controller.repeat(reverse: true),
-                )
-                .fadeIn(duration: 800.ms)
-                .slideX(begin: -0.3, end: 0, duration: 1500.ms),
-
-            // Right chevron hint
-            Positioned(
-                  right: -8,
-                  top: 0,
-                  bottom: 12,
-                  child: Center(
-                    child: Icon(
-                      Icons.chevron_left,
-                      color: AppTheme.expense.withValues(alpha: 0.7),
-                      size: 32,
-                    ),
-                  ),
-                )
-                .animate(
-                  onPlay: (controller) => controller.repeat(reverse: true),
-                )
-                .fadeIn(duration: 800.ms)
-                .slideX(begin: 0.3, end: 0, duration: 1500.ms),
-          ],
         ],
       ),
     );

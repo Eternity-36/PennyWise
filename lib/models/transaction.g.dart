@@ -33,13 +33,14 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       notes: fields[13] as String?,
       receiptPath: fields[14] as String?,
       receiptBase64: fields[15] as String?,
+      subcategory: fields[16] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Transaction obj) {
     writer
-      ..writeByte(16)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -71,7 +72,9 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       ..writeByte(14)
       ..write(obj.receiptPath)
       ..writeByte(15)
-      ..write(obj.receiptBase64);
+      ..write(obj.receiptBase64)
+      ..writeByte(16)
+      ..write(obj.subcategory);
   }
 
   @override

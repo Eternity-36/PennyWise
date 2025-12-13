@@ -165,7 +165,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 return GestureDetector(
                   onTap: () {
                     _vibrate();
-                    setState(() => _selectedCategory = category);
+                    setState(() {
+                      _selectedCategory = category;
+                    });
                   },
                   child: AnimatedContainer(
                     duration: 200.ms,
