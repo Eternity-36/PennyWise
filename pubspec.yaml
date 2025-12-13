@@ -66,6 +66,10 @@ dependencies:
   url_launcher: ^6.3.2
   dio: ^5.9.0
   open_filex: ^4.7.0
+  
+  # Google Drive
+  googleapis: ^13.2.0
+  extension_google_sign_in_as_googleapis_auth: ^2.0.12
 
 dev_dependencies:
   flutter_test:

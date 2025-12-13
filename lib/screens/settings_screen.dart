@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:intl/intl.dart';
 import '../providers/money_provider.dart';
 import '../utils/app_theme.dart';
 import '../services/export_service.dart';
 import '../services/update_service.dart';
+import '../services/google_drive_service.dart';
 import 'design_playground_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -16,8 +18,12 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final LocalAuthentication _localAuth = LocalAuthentication();
+  final GoogleDriveService _driveService = GoogleDriveService();
   bool _canCheckBiometrics = false;
   bool _checkingForUpdates = false;
+  bool _isBackingUp = false;
+  bool _isRestoring = false;
+  BackupInfo? _backupInfo;
   String _currentVersion = '1.0.0';
 
   @override
@@ -25,6 +31,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _checkBiometrics();
     _loadCurrentVersion();
+    _loadBackupInfo();
+  }
+
+  Future<void> _loadBackupInfo() async {
+    final info = await _driveService.getBackupInfo();
+    if (mounted) {
+      setState(() {
+        _backupInfo = info;
+      });
+    }
   }
 
   Future<void> _loadCurrentVersion() async {
@@ -119,6 +135,172 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Biometric lock disabled')),
+        );
+      }
+    }
+  }
+
+  Future<void> _backupToGoogleDrive() async {
+    setState(() => _isBackingUp = true);
+
+    try {
+      // Get data from provider (includes Firebase data for logged-in users)
+      final provider = Provider.of<MoneyProvider>(context, listen: false);
+      final result = await _driveService.backupToGoogleDrive(
+        transactions: provider.transactions,
+        loans: provider.loans,
+        goals: provider.goals,
+        accounts: provider.accounts,
+      );
+      
+      if (mounted) {
+        setState(() => _isBackingUp = false);
+        
+        if (result.success) {
+          await _loadBackupInfo(); // Refresh backup info
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${result.message} (${result.itemCount} items)'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isBackingUp = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Backup failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _restoreFromGoogleDrive() async {
+    // Show confirmation dialog
+    final shouldRestore = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        title: const Text(
+          'Restore from Google Drive?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This will replace all your current data with the backup.',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+            ),
+            if (_backupInfo != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Backup Info:',
+                      style: TextStyle(
+                        color: AppTheme.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (_backupInfo!.modifiedTime != null)
+                      Text(
+                        'Date: ${DateFormat('MMM d, yyyy h:mm a').format(_backupInfo!.modifiedTime!)}',
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            const Text(
+              '⚠️ This action cannot be undone!',
+              style: TextStyle(color: Colors.orange, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+            child: const Text('Restore', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldRestore != true) return;
+
+    setState(() => _isRestoring = true);
+
+    try {
+      final result = await _driveService.restoreFromGoogleDrive();
+      
+      if (mounted) {
+        setState(() => _isRestoring = false);
+        
+        if (result.success) {
+          // Reload provider data
+          final provider = Provider.of<MoneyProvider>(context, listen: false);
+          
+          // For logged-in users, import restored Hive data to Firebase
+          // This ensures transactions go to the right place
+          await provider.importRestoredDataToFirebase();
+          
+          // Reload all data
+          await provider.reloadData();
+          
+          // Force UI update after restore
+          provider.notifyListeners();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${result.message} (${result.itemCount} items restored)'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isRestoring = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Restore failed: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -434,6 +616,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             () => _exportData('PDF'),
           ),
           const SizedBox(height: 24),
+
+          _buildSection('Google Drive Sync'),
+          _buildGoogleDriveBackupTile(),
+          _buildGoogleDriveRestoreTile(),
+          const SizedBox(height: 24),
           _buildSection('Developer'),
           _buildActionTile(
             'Design Playground',
@@ -651,6 +838,146 @@ class _SettingsScreenState extends State<SettingsScreen> {
             inactiveTrackColor: Colors.grey.withValues(alpha: 0.3),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGoogleDriveBackupTile() {
+    return GestureDetector(
+      onTap: _isBackingUp ? null : _backupToGoogleDrive,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.blue.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.cloud_upload,
+                color: Colors.blue,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Backup to Google Drive',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _backupInfo != null && _backupInfo!.modifiedTime != null
+                        ? 'Last backup: ${DateFormat('MMM d, yyyy h:mm a').format(_backupInfo!.modifiedTime!)}'
+                        : 'Backup your data to Google Drive',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_isBackingUp)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                ),
+              )
+            else
+              Icon(
+                Icons.backup,
+                color: Colors.white.withValues(alpha: 0.3),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGoogleDriveRestoreTile() {
+    return GestureDetector(
+      onTap: _isRestoring ? null : _restoreFromGoogleDrive,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.green.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.cloud_download,
+                color: Colors.green,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Restore from Google Drive',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _backupInfo != null
+                        ? 'Backup available'
+                        : 'No backup found',
+                    style: TextStyle(
+                      color: _backupInfo != null
+                          ? Colors.green.withValues(alpha: 0.8)
+                          : Colors.white.withValues(alpha: 0.6),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_isRestoring)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                ),
+              )
+            else
+              Icon(
+                Icons.restore,
+                color: Colors.white.withValues(alpha: 0.3),
+              ),
+          ],
+        ),
       ),
     );
   }

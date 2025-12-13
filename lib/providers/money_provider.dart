@@ -56,8 +56,18 @@ class MoneyProvider extends ChangeNotifier {
   Account? get activeAccount => _activeAccount;
   String? get activeAccountId => _activeAccountId;
 
+  // Card design selection
+  String _selectedCardDesign = 'default';
+  String get selectedCardDesign => _selectedCardDesign;
+
+
   MoneyProvider() {
     _init();
+  }
+
+  void _loadCardDesign() {
+    _selectedCardDesign = _settingsBox.get('selectedCardDesign', defaultValue: 'default');
+    notifyListeners();
   }
 
   Future<void> _init() async {
@@ -67,8 +77,130 @@ class MoneyProvider extends ChangeNotifier {
     await _initRepository();
     _loadSettings();
     _initBudget();
+    _loadCardDesign();
 
     _isLoading = false;
+    notifyListeners();
+  }
+
+  /// Reload all data from Hive boxes (useful after restore from backup)
+  Future<void> reloadData() async {
+    _isLoading = true;
+    notifyListeners();
+
+    // Reload transactions
+    await _loadTransactions();
+    
+    // Reload categories
+    _categories = _categoryBox.values.toList();
+    
+    // Reload budgets
+    _loadCurrentBudget();
+    
+    // Reload loans
+    _loadLoans();
+    
+    // Reload goals
+    _loadGoals();
+    
+    // Reload settings
+    _loadSettings();
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  /// Import restored transactions from Hive to Firebase
+  /// Called after restore from Google Drive backup for logged-in users
+  Future<void> importRestoredDataToFirebase() async {
+    if (_accountService == null || _activeAccountId == null) {
+      debugPrint('No account service - skipping Firebase import');
+      return;
+    }
+
+    debugPrint('Importing restored data to Firebase...');
+    
+    // Get transactions from Hive that were restored
+    final transactionBox = Hive.box<Transaction>('transactions');
+    final restoredTransactions = transactionBox.values.toList();
+    
+    debugPrint('Found ${restoredTransactions.length} transactions to import');
+    
+    int imported = 0;
+    for (final t in restoredTransactions) {
+      // Skip SMS transactions - they stay in Hive
+      if (t.smsBody != null && t.smsBody!.isNotEmpty) {
+        debugPrint('Skipping SMS transaction: ${t.title}');
+        continue;
+      }
+      
+      try {
+        // Determine which account to add to
+        final accountId = t.accountId.isNotEmpty && t.accountId != 'default' 
+            ? t.accountId 
+            : _activeAccountId!;
+        
+        // Create transaction with correct userId
+        final transaction = Transaction(
+          id: t.id,
+          title: t.title,
+          amount: t.amount,
+          date: t.date,
+          isExpense: t.isExpense,
+          category: t.category,
+          accountId: accountId,
+          userId: _userId,
+          notes: t.notes,
+          receiptPath: t.receiptPath,
+          receiptBase64: t.receiptBase64,
+          subcategory: t.subcategory,
+        );
+        
+        await _accountService!.addTransaction(accountId, transaction);
+        imported++;
+        debugPrint('Imported: ${t.title}');
+      } catch (e) {
+        debugPrint('Error importing transaction ${t.title}: $e');
+      }
+    }
+    
+    debugPrint('Imported $imported transactions to Firebase');
+    
+    // Clear the Hive transactions box (keep only SMS transactions)
+    final smsTransactions = restoredTransactions
+        .where((t) => t.smsBody != null && t.smsBody!.isNotEmpty)
+        .toList();
+    await transactionBox.clear();
+    for (final t in smsTransactions) {
+      await transactionBox.add(t);
+    }
+    
+    // Import loans
+    final loanBox = Hive.box<Loan>('loans');
+    final restoredLoans = loanBox.values.toList();
+    debugPrint('Importing ${restoredLoans.length} loans...');
+    for (final loan in restoredLoans) {
+      try {
+        await _accountService!.addLoan(_activeAccountId!, loan);
+      } catch (e) {
+        debugPrint('Error importing loan: $e');
+      }
+    }
+    
+    // Import goals
+    final goalBox = Hive.box<Goal>('goals');
+    final restoredGoals = goalBox.values.toList();
+    debugPrint('Importing ${restoredGoals.length} goals...');
+    for (final goal in restoredGoals) {
+      try {
+        await _accountService!.addGoal(_activeAccountId!, goal);
+      } catch (e) {
+        debugPrint('Error importing goal: $e');
+      }
+    }
+    
+    // Reload data from Firebase
+    await _loadAccountData(_activeAccountId!);
     notifyListeners();
   }
 
@@ -147,6 +279,7 @@ class MoneyProvider extends ChangeNotifier {
       'biometricLockEnabled',
       defaultValue: false,
     );
+    _selectedCardDesign = _settingsBox.get('selectedCardDesign', defaultValue: 'default');
     if (_smsTrackingEnabled) {
       syncSmsTransactions();
     }
@@ -162,6 +295,12 @@ class MoneyProvider extends ChangeNotifier {
   Future<void> setBiometricLock(bool enabled) async {
     _biometricLockEnabled = enabled;
     await _settingsBox.put('biometricLockEnabled', enabled);
+    notifyListeners();
+  }
+
+  Future<void> setSelectedCardDesign(String design) async {
+    _selectedCardDesign = design;
+    await _settingsBox.put('selectedCardDesign', design);
     notifyListeners();
   }
 

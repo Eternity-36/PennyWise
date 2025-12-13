@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'package:pennywise/widgets/card_designs.dart';
 import '../providers/money_provider.dart';
 import '../models/account.dart';
 import '../utils/app_theme.dart';
@@ -11,7 +12,7 @@ import 'skeleton_loading.dart';
 
 class BalanceCard extends StatefulWidget {
   final VoidCallback? onBudgetTap;
-  
+
   const BalanceCard({super.key, this.onBudgetTap});
 
   @override
@@ -36,7 +37,7 @@ class _BalanceCardState extends State<BalanceCard> {
           final provider = Provider.of<MoneyProvider>(context);
           final accounts = provider.accounts;
           final activeAccount = provider.activeAccount;
-          
+
           return Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -52,7 +53,7 @@ class _BalanceCardState extends State<BalanceCard> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                
+
                 // Header
                 Row(
                   children: [
@@ -71,7 +72,10 @@ class _BalanceCardState extends State<BalanceCard> {
                         _showCreateAccountDialog(context);
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: AppTheme.primary.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(20),
@@ -95,7 +99,7 @@ class _BalanceCardState extends State<BalanceCard> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                
+
                 // Account list
                 ...accounts.map((account) {
                   final isActive = activeAccount?.id == account.id;
@@ -110,95 +114,97 @@ class _BalanceCardState extends State<BalanceCard> {
                       Navigator.pop(context);
                       _showAccountOptionsDialog(context, account);
                     },
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? account.color.withValues(alpha: 0.2)
-                        : Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isActive
-                          ? account.color
-                          : Colors.white.withValues(alpha: 0.1),
-                      width: isActive ? 2 : 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: account.color.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.account_balance_wallet,
-                          color: account.color,
-                          size: 24,
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? account.color.withValues(alpha: 0.2)
+                            : Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isActive
+                              ? account.color
+                              : Colors.white.withValues(alpha: 0.1),
+                          width: isActive ? 2 : 1,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              account.name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: account.color.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            if (account.showSmsTransactions)
-                              Text(
-                                'SMS enabled',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.5),
-                                  fontSize: 12,
+                            child: Icon(
+                              Icons.account_balance_wallet,
+                              color: account.color,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  account.name,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
+                                if (account.showSmsTransactions)
+                                  Text(
+                                    'SMS enabled',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          if (isActive)
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: account.color,
+                                shape: BoxShape.circle,
                               ),
-                          ],
-                        ),
+                              child: const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            )
+                          else
+                            Icon(
+                              Icons.chevron_right,
+                              color: Colors.white.withValues(alpha: 0.3),
+                            ),
+                        ],
                       ),
-                      if (isActive)
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: account.color,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.check,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        )
-                      else
-                        Icon(
-                          Icons.chevron_right,
-                          color: Colors.white.withValues(alpha: 0.3),
-                        ),
-                    ],
+                    ),
+                  );
+                }),
+
+                const SizedBox(height: 8),
+                Text(
+                  'Long press an account for more options',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 12,
                   ),
                 ),
-              );
-            }),
-            
-            const SizedBox(height: 8),
-            Text(
-              'Long press an account for more options',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.4),
-                fontSize: 12,
-              ),
+                const SizedBox(height: 10),
+              ],
             ),
-            const SizedBox(height: 10),
-          ],
-        ),
-      );
+          );
         },
       ),
     );
@@ -208,13 +214,15 @@ class _BalanceCardState extends State<BalanceCard> {
     final nameController = TextEditingController();
     final provider = Provider.of<MoneyProvider>(context, listen: false);
     bool showSmsTransactions = false;
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: AppTheme.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Row(
             children: [
               Container(
@@ -243,14 +251,25 @@ class _BalanceCardState extends State<BalanceCard> {
                 maxLength: 20,
                 decoration: InputDecoration(
                   labelText: 'Account Name',
-                  labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+                  labelStyle: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
                   hintText: 'e.g., Business, Family, Savings',
-                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
-                  counterStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
-                  prefixIcon: Icon(Icons.account_balance_wallet, color: AppTheme.primary),
+                  hintStyle: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4),
+                  ),
+                  counterStyle: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                  ),
+                  prefixIcon: Icon(
+                    Icons.account_balance_wallet,
+                    color: AppTheme.primary,
+                  ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                    borderSide: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -266,7 +285,7 @@ class _BalanceCardState extends State<BalanceCard> {
                   color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: showSmsTransactions 
+                    color: showSmsTransactions
                         ? AppTheme.primary.withValues(alpha: 0.5)
                         : Colors.white.withValues(alpha: 0.1),
                   ),
@@ -283,7 +302,9 @@ class _BalanceCardState extends State<BalanceCard> {
                       ),
                       child: Icon(
                         Icons.sms_outlined,
-                        color: showSmsTransactions ? AppTheme.primary : Colors.white54,
+                        color: showSmsTransactions
+                            ? AppTheme.primary
+                            : Colors.white54,
                         size: 20,
                       ),
                     ),
@@ -317,7 +338,7 @@ class _BalanceCardState extends State<BalanceCard> {
                           showSmsTransactions = value;
                         });
                       },
-                      activeColor: AppTheme.primary,
+                      activeThumbColor: AppTheme.primary,
                     ),
                   ],
                 ),
@@ -336,18 +357,20 @@ class _BalanceCardState extends State<BalanceCard> {
               onPressed: () async {
                 if (nameController.text.trim().isNotEmpty) {
                   Navigator.pop(context);
-                  
+
                   // Create account via provider with SMS setting
                   final account = await provider.createAccount(
                     nameController.text.trim(),
                     colorValue: _getAccountColor(provider.accounts.length),
                     showSmsTransactions: showSmsTransactions,
                   );
-                  
+
                   if (account != null && mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Account "${nameController.text.trim()}" created!'),
+                        content: Text(
+                          'Account "${nameController.text.trim()}" created!',
+                        ),
                         backgroundColor: AppTheme.income,
                       ),
                     );
@@ -356,7 +379,9 @@ class _BalanceCardState extends State<BalanceCard> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text('Create'),
             ),
@@ -382,20 +407,22 @@ class _BalanceCardState extends State<BalanceCard> {
   Widget build(BuildContext context) {
     final provider = Provider.of<MoneyProvider>(context);
     final activeAccount = provider.activeAccount;
-    
+
     // Show skeleton loading while data is loading
     if (provider.isLoading) {
       return const BalanceCardSkeleton();
     }
-    
+
     // Check if user is a guest
-    final isGuest = provider.userId == null || provider.settingsBox.get('isGuest', defaultValue: true);
-    
+    final isGuest =
+        provider.userId == null ||
+        provider.settingsBox.get('isGuest', defaultValue: true);
+
     // Guest users don't have multi-account feature - show simple card
     if (isGuest) {
       return _buildMainCardWithoutAccount(context, provider);
     }
-    
+
     // For logged-in users with no accounts yet, show card with option to create
     if (activeAccount == null) {
       return _buildMainCardWithoutAccount(context, provider);
@@ -404,12 +431,15 @@ class _BalanceCardState extends State<BalanceCard> {
     // Show the active account card with tap to switch
     return GestureDetector(
       onTap: () => _showAccountSwitcherBottomSheet(context),
-      child: _buildMainCard(context, provider, activeAccount),
+      child: _buildSelectedCard(context, provider, activeAccount),
     );
   }
 
   /// Build main card when no account system is active (guest mode)
-  Widget _buildMainCardWithoutAccount(BuildContext context, MoneyProvider provider) {
+  Widget _buildMainCardWithoutAccount(
+    BuildContext context,
+    MoneyProvider provider,
+  ) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -548,9 +578,13 @@ class _BalanceCardState extends State<BalanceCard> {
     );
   }
 
-  Widget _buildMainCard(BuildContext context, MoneyProvider provider, Account account) {
+  Widget _buildMainCard(
+    BuildContext context,
+    MoneyProvider provider,
+    Account account,
+  ) {
     final hasMultipleAccounts = provider.accounts.length > 1;
-    
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
@@ -595,7 +629,10 @@ class _BalanceCardState extends State<BalanceCard> {
                       if (hasMultipleAccounts) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
@@ -628,7 +665,10 @@ class _BalanceCardState extends State<BalanceCard> {
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: account.color.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(8),
@@ -766,9 +806,76 @@ class _BalanceCardState extends State<BalanceCard> {
     ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.3, end: 0);
   }
 
+  Widget _buildSelectedCard(
+    BuildContext context,
+    MoneyProvider provider,
+    Account account,
+  ) {
+    switch (provider.selectedCardDesign) {
+      case 'ocean_wave':
+        return OceanWaveHeader(provider: provider);
+      case 'forest_green':
+        return ForestGreenHeader(provider: provider);
+      case 'sunset_orange':
+        return SunsetOrangeHeader(provider: provider);
+      case 'midnight_blue':
+        return MidnightBlueHeader(provider: provider);
+      case 'lavender_dream':
+        return LavenderDreamHeader(provider: provider);
+      case 'crimson_red':
+        return CrimsonRedHeader(provider: provider);
+      case 'arctic_white':
+        return ArcticWhiteHeader(provider: provider);
+      case 'desert_sand':
+        return DesertSandHeader(provider: provider);
+      case 'galaxy_purple':
+        return GalaxyPurpleHeader(provider: provider);
+      case 'emerald_green':
+        return EmeraldGreenHeader(provider: provider);
+      case 'cosmic_nebula':
+        return CosmicNebulaHeader(provider: provider);
+      case 'quantum_dot':
+        return QuantumDotHeader(provider: provider);
+      case 'liquid_gold':
+        return LiquidGoldHeader(provider: provider);
+      case 'cyber_glitch':
+        return CyberGlitchHeader(provider: provider);
+      case 'zen_garden':
+        return ZenGardenHeader(provider: provider);
+      case 'retro_vaporwave':
+        return RetroVaporwaveHeader(provider: provider);
+      case 'neon_city':
+        return NeonCityHeader(provider: provider);
+      case 'prism_refraction':
+        return PrismRefractionHeader(provider: provider);
+      case 'obsidian_shard':
+        return ObsidianShardHeader(provider: provider);
+      case 'bioluminescence':
+        return BioluminescenceHeader(provider: provider);
+      case 'amex_platinum_glass':
+        return AmexPlatinumGlassHeader(provider: provider);
+      case 'amex_gold_frosted':
+        return AmexGoldFrostedHeader(provider: provider);
+      case 'amex_centurion':
+        return AmexCenturionHeader(provider: provider);
+      case 'visa_infinite_glass':
+        return VisaInfiniteGlassHeader(provider: provider);
+      case 'mastercard_world_elite':
+        return MastercardWorldEliteHeader(provider: provider);
+      case 'frosted_ocean_glass':
+        return FrostedOceanGlassHeader(provider: provider);
+      case 'aurora_borealis_glass':
+        return AuroraBorealisGlassHeader(provider: provider);
+      case 'sapphire_reserve_glass':
+        return SapphireReserveGlassHeader(provider: provider);
+      default:
+        return _buildMainCard(context, provider, account);
+    }
+  }
+
   void _showAccountOptionsDialog(BuildContext context, Account account) {
     final provider = Provider.of<MoneyProvider>(context, listen: false);
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: AppTheme.surface,
@@ -790,7 +897,7 @@ class _BalanceCardState extends State<BalanceCard> {
               ),
             ),
             const SizedBox(height: 20),
-            
+
             // Account name header
             Row(
               children: [
@@ -800,7 +907,11 @@ class _BalanceCardState extends State<BalanceCard> {
                     color: account.color.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.account_balance_wallet, color: account.color, size: 24),
+                  child: Icon(
+                    Icons.account_balance_wallet,
+                    color: account.color,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -816,7 +927,9 @@ class _BalanceCardState extends State<BalanceCard> {
                         ),
                       ),
                       Text(
-                        account.showSmsTransactions ? 'SMS enabled' : 'SMS disabled',
+                        account.showSmsTransactions
+                            ? 'SMS enabled'
+                            : 'SMS disabled',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.5),
                           fontSize: 13,
@@ -828,7 +941,7 @@ class _BalanceCardState extends State<BalanceCard> {
               ],
             ),
             const SizedBox(height: 24),
-            
+
             // Toggle SMS option
             ListTile(
               leading: Container(
@@ -837,11 +950,20 @@ class _BalanceCardState extends State<BalanceCard> {
                   color: AppTheme.primary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.sms_outlined, color: AppTheme.primary, size: 20),
+                child: Icon(
+                  Icons.sms_outlined,
+                  color: AppTheme.primary,
+                  size: 20,
+                ),
               ),
-              title: const Text('SMS Transactions', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'SMS Transactions',
+                style: TextStyle(color: Colors.white),
+              ),
               subtitle: Text(
-                account.showSmsTransactions ? 'Tap to disable' : 'Tap to enable',
+                account.showSmsTransactions
+                    ? 'Tap to disable'
+                    : 'Tap to enable',
                 style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
               ),
               trailing: Switch(
@@ -850,16 +972,19 @@ class _BalanceCardState extends State<BalanceCard> {
                   await provider.updateAccountSmsEnabled(account.id, value);
                   if (mounted) Navigator.pop(context);
                 },
-                activeColor: AppTheme.primary,
+                activeThumbColor: AppTheme.primary,
               ),
               onTap: () async {
-                await provider.updateAccountSmsEnabled(account.id, !account.showSmsTransactions);
+                await provider.updateAccountSmsEnabled(
+                  account.id,
+                  !account.showSmsTransactions,
+                );
                 if (mounted) Navigator.pop(context);
               },
             ),
-            
+
             const Divider(color: Colors.white12),
-            
+
             // Delete option
             ListTile(
               leading: Container(
@@ -868,9 +993,16 @@ class _BalanceCardState extends State<BalanceCard> {
                   color: AppTheme.expense.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.delete_outline, color: AppTheme.expense, size: 20),
+                child: Icon(
+                  Icons.delete_outline,
+                  color: AppTheme.expense,
+                  size: 20,
+                ),
               ),
-              title: const Text('Delete Account', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'Delete Account',
+                style: TextStyle(color: Colors.white),
+              ),
               subtitle: Text(
                 'Remove this account and all its data',
                 style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
@@ -880,7 +1012,7 @@ class _BalanceCardState extends State<BalanceCard> {
                 _showDeleteAccountConfirmation(context, account);
               },
             ),
-            
+
             const SizedBox(height: 10),
           ],
         ),
@@ -890,7 +1022,7 @@ class _BalanceCardState extends State<BalanceCard> {
 
   void _showDeleteAccountConfirmation(BuildContext context, Account account) {
     final provider = Provider.of<MoneyProvider>(context, listen: false);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -904,7 +1036,11 @@ class _BalanceCardState extends State<BalanceCard> {
                 color: AppTheme.expense.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.warning_amber_rounded, color: AppTheme.expense, size: 24),
+              child: Icon(
+                Icons.warning_amber_rounded,
+                color: AppTheme.expense,
+                size: 24,
+              ),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -927,7 +1063,9 @@ class _BalanceCardState extends State<BalanceCard> {
               decoration: BoxDecoration(
                 color: AppTheme.expense.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.expense.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: AppTheme.expense.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 children: [
@@ -958,9 +1096,9 @@ class _BalanceCardState extends State<BalanceCard> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              
+
               final success = await provider.deleteAccount(account.id);
-              
+
               if (mounted) {
                 if (success) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -981,7 +1119,9 @@ class _BalanceCardState extends State<BalanceCard> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.expense,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('Delete'),
           ),
